@@ -104,13 +104,34 @@ if os.path.exists(INPUT_EXAMPLES_PATH):
     with open(INPUT_EXAMPLES_PATH, 'r', encoding='utf-8') as f:
         new_errors = json.load(f)
 
-    print("\n--- Running Inference ---")
-    for new_error in new_errors:
-        doc_path, conf = classify_error(new_error)
+    # Choose classification method
+    USE_VECTOR_DB = True  # Set to False to use semantic search or traditional ML
+    
+    if USE_VECTOR_DB:
+        from vector_db_classifier import initialize_vector_db
+        vector_kb = initialize_vector_db()
+        
+        print("\n--- Running Inference (Vector DB) ---")
+        for new_error in new_errors:
+            result = vector_kb.search(new_error['Raw_Input_Snippet'])
+            
+            print(f"Input Snippet: {new_error['Raw_Input_Snippet']}")
+            print(f"AI Classification: {result['doc_path']}")
+            print(f"Source: {result['source']}")
+            if 'confidence' in result:
+                print(f"Confidence Level: {result['confidence']}")
+            print("-" * 30)
+    else:
+        from semantic_search import DocumentationSearchEngine
+        doc_search_engine = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
 
-        print(f"Input Snippet: {new_error['Raw_Input_Snippet']}")
-        print(f"AI Classification: {doc_path}")
-        print(f"Confidence Level: {conf:.2f}%")
-        print("-" * 30)
+        print("\n--- Running Inference (Semantic Search) ---")
+        for new_error in new_errors:
+            doc_path, conf = doc_search_engine.find_relevant_doc(new_error['Raw_Input_Snippet'])
+
+            print(f"Input Snippet: {new_error['Raw_Input_Snippet']}")
+            print(f"AI Classification: {doc_path}")
+            print(f"Confidence Level: {conf:.2f}%")
+            print("-" * 30)
 else:
     print(f"No {INPUT_EXAMPLES_PATH} found to test.")
