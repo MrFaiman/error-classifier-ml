@@ -7,8 +7,8 @@ from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
+from constants import CHECKPOINT_DIR, DOCS_ROOT_DIR, DATASET_PATH, INPUT_EXAMPLES_PATH
 
-CHECKPOINT_DIR = 'checkpoints'
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
 def load_and_prep_data(csv_path):
@@ -38,7 +38,7 @@ def load_and_prep_data(csv_path):
     df = pd.DataFrame(records, columns=header)
 
     df['target_doc'] = df.apply(lambda row:
-        f"docs\\services\\{row['Service'].lower()}\\{row['Error_Category']}.md", axis=1)
+        f"{DOCS_ROOT_DIR}\\services\\{row['Service'].lower()}\\{row['Error_Category']}.md", axis=1)
 
     df['combined_features'] = (
         df['Service'] + " " +
@@ -84,7 +84,7 @@ if not FORCE_RETRAIN:
 
 if model is None:
     print("Starting Training Session...")
-    df = load_and_prep_data('errors_dataset.csv')
+    df = load_and_prep_data(DATASET_PATH)
     model = build_model()
     model.fit(df['combined_features'], df['target_doc'])
     print("Training Complete.")
@@ -100,8 +100,8 @@ def classify_error(log_line_dict):
     
     return prediction, confidence
 
-if os.path.exists('input_examples.json'):
-    with open('input_examples.json', 'r', encoding='utf-8') as f:
+if os.path.exists(INPUT_EXAMPLES_PATH):
+    with open(INPUT_EXAMPLES_PATH, 'r', encoding='utf-8') as f:
         new_errors = json.load(f)
 
     print("\n--- Running Inference ---")
@@ -113,4 +113,4 @@ if os.path.exists('input_examples.json'):
         print(f"Confidence Level: {conf:.2f}%")
         print("-" * 30)
 else:
-    print("No input_examples.json found to test.")
+    print(f"No {INPUT_EXAMPLES_PATH} found to test.")
