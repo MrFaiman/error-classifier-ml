@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# UI build artifacts (backend doesn't need them)
+ui/node_modules/
+ui/build/
+ui/dist/
+
+# Documentation
+README.md
+docs/
+*.md

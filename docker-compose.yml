@@ -1,0 +1,46 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: error-classifier-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./dataset:/app/dataset
+      - ./checkpoints:/app/checkpoints
+      - chroma_data:/app/chroma_db
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: error-classifier-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  chroma_data:
+    driver: local
+
+networks:
+  default:
+    name: error-classifier-network
