@@ -1,0 +1,51 @@
+[
+    {
+        "Timestamp": "2025-11-24T08:03:10Z",
+        "Service": "Meteo-IL",
+        "Error_Category": "GEO_OUT_OF_BOUNDS",
+        "Raw_Input_Snippet": "lat: 0, lon: 0",
+        "Root_Cause": "Default Value - System reset to null island"
+    },
+    {
+        "Timestamp": "2025-11-24T09:00:00Z",
+        "Service": "SkyGuard",
+        "Error_Category": "SCHEMA_VALIDATION",
+        "Raw_Input_Snippet": "signal_strength: 1050",
+        "Root_Cause": "Unknown"
+    },
+    {
+        "Timestamp": "2025-11-24T08:07:40Z",
+        "Service": "SkyGuard",
+        "Error_Category": "INVALID_ENUM",
+        "Raw_Input_Snippet": "status: \"F\"",
+        "Root_Cause": "Abbreviation used instead of full enum"
+    },
+    {
+        "Timestamp": "2025-11-24T08:07:10Z",
+        "Service": "Meteo-IL",
+        "Error_Category": "GEO_OUT_OF_BOUNDS",
+        "Raw_Input_Snippet": "lon: 34",
+        "Root_Cause": "Type Error - Missing decimal point implies potential parsing issue"
+    },
+    {
+        "Timestamp": "2025-11-24T08:00:40Z",
+        "Service": "Meteo-IL",
+        "Error_Category": "TYPE_MISMATCH",
+        "Raw_Input_Snippet": "wind_speed: null",
+        "Root_Cause": "Device Failure - Anemometer disconnected"
+    },
+    {
+        "Timestamp": "2025-11-24T08:00:20Z",
+        "Service": "LogiTrack",
+        "Error_Category": "MISSING_FIELD",
+        "Raw_Input_Snippet": "item_id: missing",
+        "Root_Cause": "Data Corruption - Mandatory field missing"
+    },
+    {
+        "Timestamp": "2025-11-24T08:02:40Z",
+        "Service": "LogiTrack",
+        "Error_Category": "XSS_ATTEMPT",
+        "Raw_Input_Snippet": "note: \"<script>\"",
+        "Root_Cause": "Security Alert - XSS payload in optional field"
+    }
+]

@@ -1,0 +1,103 @@
+Timestamp,Service,Error_Category,Raw_Input_Snippet,Root_Cause
+2025-11-24T08:00:01Z,SkyGuard,SCHEMA_VALIDATION,signal_strength: 999,Sensor Glitch - Value out of range (0-100)
+2025-11-24T08:00:05Z,LogiTrack,TYPE_MISMATCH,quantity: "five",Human Error - User typed text instead of number
+2025-11-24T08:00:12Z,Meteo-IL,INVALID_DATE,timestamp: "24/11/25",Format Error - Non-ISO date format detected
+2025-11-24T08:00:15Z,SkyGuard,INVALID_ENUM,status: "SUSPICIOUS",Protocol Violation - Status not in allowed list
+2025-11-24T08:00:20Z,LogiTrack,MISSING_FIELD,item_id: missing,Data Corruption - Mandatory field missing
+2025-11-24T08:00:25Z,Meteo-IL,GEO_OUT_OF_BOUNDS,lat: 91.0,Sensor Error - Latitude > 90 is physically impossible
+2025-11-24T08:00:30Z,SkyGuard,REGEX_MISMATCH,transponder: "12A4",Legacy System - Hex code sent instead of Octal
+2025-11-24T08:00:35Z,LogiTrack,NEGATIVE_VALUE,quantity: -10,Human Error - User tried to subtract inventory via qty
+2025-11-24T08:00:40Z,Meteo-IL,TYPE_MISMATCH,wind_speed: null,Device Failure - Anemometer disconnected
+2025-11-24T08:00:45Z,SkyGuard,MISSING_FIELD,aircraft_id: undefined,Packet Loss - Partial data received from radio
+2025-11-24T08:01:00Z,LogiTrack,UNKNOWN_FIELD,comment: "urgent",Schema Strictness - Extra field sent not in schema
+2025-11-24T08:01:05Z,SkyGuard,TYPE_MISMATCH,altitude: "35000ft",Parsing Error - String with units sent instead of raw number
+2025-11-24T08:01:10Z,Meteo-IL,JSON_SYNTAX,},Malformed JSON - Closing brace without opening
+2025-11-24T08:01:15Z,SkyGuard,SCHEMA_VALIDATION,signal_strength: 105,Sensor Calibration - Device needs recalibration
+2025-11-24T08:01:20Z,LogiTrack,INVALID_STRING,base_id: "b_nevatim",Format Error - Expected uppercase 'BASE_NEVATIM'
+2025-11-24T08:01:25Z,LogiTrack,TYPE_MISMATCH,quantity: 10.5,Business Logic - Cannot have partial missile count
+2025-11-24T08:01:30Z,Meteo-IL,GEO_OUT_OF_BOUNDS,lon: 200,GPS Failure - Longitude out of valid range
+2025-11-24T08:01:35Z,SkyGuard,INVALID_ENUM,status: "UFO",Cyber Event - Potential spoofing or unauthorized protocol
+2025-11-24T08:01:40Z,SkyGuard,TOO_SHORT,transponder: "77",Legacy System - 2 digit code sent instead of 4
+2025-11-24T08:01:45Z,LogiTrack,SQL_INJECTION_ATTEMPT,item_id: "OR 1=1",Security Alert - Malicious payload detected in input
+2025-11-24T08:02:00Z,Meteo-IL,MISSING_FIELD,location: {},Empty object sent for location
+2025-11-24T08:02:05Z,SkyGuard,TYPE_MISMATCH,is_hostile: 1,Type Error - Expected boolean (true/false) got number
+2025-11-24T08:02:10Z,LogiTrack,SCHEMA_VALIDATION,type: "TANK_SHELL",Invalid Enum - Munition type not supported by air force system
+2025-11-24T08:02:15Z,Meteo-IL,INVALID_DATE,timestamp: 1716543210000,Format Error - Expected ISO String got Unix Epoch
+2025-11-24T08:02:20Z,SkyGuard,SCHEMA_VALIDATION,altitude: -500,Sensor Error - Altitude below ground level (unless submarine)
+2025-11-24T08:02:25Z,LogiTrack,MISSING_FIELD,inventory: [],Business Logic - Empty inventory update sent
+2025-11-24T08:02:30Z,SkyGuard,REGEX_MISMATCH,transponder: "8888",Format Error - Octal codes cannot contain '8'
+2025-11-24T08:02:35Z,Meteo-IL,TYPE_MISMATCH,visibility: "Good",Type Error - Expected number (meters) got description
+2025-11-24T08:02:40Z,LogiTrack,XSS_ATTEMPT,note: "<script>",Security Alert - XSS payload in optional field
+2025-11-24T08:02:45Z,SkyGuard,SCHEMA_VALIDATION,signal_strength: -5,Sensor Glitch - Negative signal strength
+2025-11-24T08:03:00Z,SkyGuard,MISSING_FIELD,timestamp: null,System Error - Time synchronization failed on source
+2025-11-24T08:03:05Z,LogiTrack,TYPE_MISMATCH,quantity: "100",Type Error - String number instead of int
+2025-11-24T08:03:10Z,Meteo-IL,GEO_OUT_OF_BOUNDS,lat: 0, lon: 0,Default Value - System reset to null island
+2025-11-24T08:03:15Z,SkyGuard,INVALID_ENUM,status: "FRIEND",Format Error - Expected 'FRIENDLY'
+2025-11-24T08:03:20Z,LogiTrack,INVALID_STRING,base_id: "BASE1",Format Error - Missing underscore separator
+2025-11-24T08:03:25Z,Meteo-IL,TYPE_MISMATCH,wind_speed: "FAST",Type Error - Qualitative description instead of quantitative
+2025-11-24T08:03:30Z,SkyGuard,TOO_LONG,transponder: "12345",Format Error - Code too long (5 digits)
+2025-11-24T08:03:35Z,LogiTrack,NEGATIVE_VALUE,quantity: -99,Human Error - Massive deletion attempt
+2025-11-24T08:03:40Z,Meteo-IL,SCHEMA_VALIDATION,temp: 60,Logic Error - Temperature > 55C in Israel is unlikely
+2025-11-24T08:03:45Z,SkyGuard,SCHEMA_VALIDATION,altitude: 200000,Logic Error - Altitude above atmosphere
+2025-11-24T08:04:00Z,LogiTrack,JSON_SYNTAX,{item_id: "x",,Syntax Error - Double comma
+2025-11-24T08:04:05Z,SkyGuard,TYPE_MISMATCH,coordinates: [32, 34],Type Error - Expected object {lat, lon} got array
+2025-11-24T08:04:10Z,Meteo-IL,MISSING_FIELD,wind_speed: undefined,Sensor Failure - Wind sensor offline
+2025-11-24T08:04:15Z,LogiTrack,INVALID_ENUM,type: "GUN",Invalid Enum - Not a valid munition category
+2025-11-24T08:04:20Z,SkyGuard,SCHEMA_VALIDATION,signal_strength: 101,Sensor Glitch - Just above max
+2025-11-24T08:04:25Z,Meteo-IL,INVALID_DATE,timestamp: "2025/11/24",Format Error - Slash separator instead of dashes
+2025-11-24T08:04:30Z,LogiTrack,TYPE_MISMATCH,quantity: true,Type Error - Boolean instead of number
+2025-11-24T08:04:35Z,SkyGuard,REGEX_MISMATCH,transponder: "ABCD",Format Error - Alphabetic characters in numeric field
+2025-11-24T08:04:40Z,Meteo-IL,GEO_OUT_OF_BOUNDS,lat: "32.5",Type Error - String coordinate instead of number
+2025-11-24T08:04:45Z,SkyGuard,MISSING_FIELD,status: null,State Error - Aircraft state unknown/null
+2025-11-24T08:05:00Z,LogiTrack,UNKNOWN_FIELD,driver: "Yossi",Schema Strictness - Unexpected field added
+2025-11-24T08:05:05Z,Meteo-IL,SCHEMA_VALIDATION,visibility: -50,Sensor Error - Negative visibility
+2025-11-24T08:05:10Z,SkyGuard,INVALID_ENUM,status: "NEUTRAL",Protocol Violation - Status not supported
+2025-11-24T08:05:15Z,LogiTrack,SCHEMA_VALIDATION,item_id: "",Validation - Empty string not allowed
+2025-11-24T08:05:20Z,SkyGuard,TYPE_MISMATCH,last_ping: "now",Type Error - String instead of timestamp
+2025-11-24T08:05:25Z,Meteo-IL,MISSING_FIELD,location: null,System Error - GPS module not ready
+2025-11-24T08:05:30Z,LogiTrack,SCHEMA_VALIDATION,base_id: "BASE_TLV_NORTH",Format Error - Too specific/Unknown base ID
+2025-11-24T08:05:35Z,SkyGuard,SCHEMA_VALIDATION,signal_strength: 0.5,Type Warning - Expected Integer
+2025-11-24T08:05:40Z,Meteo-IL,INVALID_DATE,timestamp: "",Validation - Empty timestamp
+2025-11-24T08:05:45Z,LogiTrack,TYPE_MISMATCH,inventory: "full",Type Error - String instead of Array
+2025-11-24T08:06:00Z,SkyGuard,REGEX_MISMATCH,transponder: "9999",Format Error - Digits > 7 in octal field
+2025-11-24T08:06:05Z,Meteo-IL,GEO_OUT_OF_BOUNDS,lat: 45.0,Logic Warning - Location outside Israel operational zone
+2025-11-24T08:06:10Z,LogiTrack,NEGATIVE_VALUE,quantity: -1000,Human Error - Catastrophic deletion attempt
+2025-11-24T08:06:15Z,SkyGuard,MISSING_FIELD,payload: {},Validation - Empty payload object
+2025-11-24T08:06:20Z,SkyGuard,SCHEMA_VALIDATION,aircraft_id: "!!!",Validation - Special characters not allowed
+2025-11-24T08:06:25Z,LogiTrack,TYPE_MISMATCH,quantity: [10],Type Error - Array instead of number
+2025-11-24T08:06:30Z,Meteo-IL,TYPE_MISMATCH,visibility: "Unlimited",Legacy System - Textual description
+2025-11-24T08:06:35Z,SkyGuard,INVALID_ENUM,status: 1,Type Error - Enum index instead of string value
+2025-11-24T08:06:40Z,LogiTrack,SCHEMA_VALIDATION,item_id: 12345,Type Error - Expected string ID
+2025-11-24T08:06:45Z,Meteo-IL,INVALID_DATE,timestamp: "24-Nov-2025",Format Error - Human readable date
+2025-11-24T08:07:00Z,SkyGuard,SCHEMA_VALIDATION,altitude: "high",Type Error - String value
+2025-11-24T08:07:05Z,LogiTrack,UNKNOWN_FIELD,meta: "test",Schema Strictness - Debug field left in prod
+2025-11-24T08:07:10Z,Meteo-IL,GEO_OUT_OF_BOUNDS,lon: 34,Type Error - Missing decimal point implies potential parsing issue
+2025-11-24T08:07:15Z,SkyGuard,REGEX_MISMATCH,transponder: "000",Too Short - 3 digits
+2025-11-24T08:07:20Z,LogiTrack,SQL_INJECTION_ATTEMPT,base_id: "BASE_X; DROP TABLE",Security Alert - SQL Injection
+2025-11-24T08:07:25Z,SkyGuard,SCHEMA_VALIDATION,signal_strength: 1000,Sensor Glitch - Massive spike
+2025-11-24T08:07:30Z,Meteo-IL,MISSING_FIELD,lat: undefined,Partial GPS data
+2025-11-24T08:07:35Z,LogiTrack,TYPE_MISMATCH,quantity: "NaN",Calculation Error upstream
+2025-11-24T08:07:40Z,SkyGuard,INVALID_ENUM,status: "F",Abbreviation used instead of full enum
+2025-11-24T08:07:45Z,Meteo-IL,SCHEMA_VALIDATION,temp: "30C",Unit included in number field
+2025-11-24T08:08:00Z,SkyGuard,MISSING_FIELD,source_id: null,Identity Crisis - Source unknown
+2025-11-24T08:08:05Z,LogiTrack,TYPE_MISMATCH,inventory: null,Database Error upstream
+2025-11-24T08:08:10Z,SkyGuard,REGEX_MISMATCH,transponder: "7778",Format Error - 8 in octal
+2025-11-24T08:08:15Z,Meteo-IL,INVALID_DATE,timestamp: "T12:00:00",Format Error - Missing Date part
+2025-11-24T08:08:20Z,LogiTrack,NEGATIVE_VALUE,quantity: -1,Human Error - Decrement by one
+2025-11-24T08:08:25Z,SkyGuard,SCHEMA_VALIDATION,altitude: 0,Logic Warning - Altitude 0 implies crash or taxiing
+2025-11-24T08:08:30Z,Meteo-IL,GEO_OUT_OF_BOUNDS,lat: 100,Sensor Error
+2025-11-24T08:08:35Z,LogiTrack,INVALID_STRING,base_id: "base_1",Case Sensitivity Error
+2025-11-24T08:08:40Z,SkyGuard,TYPE_MISMATCH,signal_strength: "strong",Legacy System
+2025-11-24T08:08:45Z,Meteo-IL,MISSING_FIELD,wind_speed: null,Sensor Offline
+2025-11-24T08:09:00Z,LogiTrack,SCHEMA_VALIDATION,type: "MISSILE",General term used instead of specific ENUM
+2025-11-24T08:09:05Z,SkyGuard,JSON_SYNTAX,{{},Malformed JSON
+2025-11-24T08:09:10Z,SkyGuard,SCHEMA_VALIDATION,transponder: 1234,Type Error - Number sent instead of String
+2025-11-24T08:09:15Z,LogiTrack,XSS_ATTEMPT,item_id: "<img src=x>",Security Alert
+2025-11-24T08:09:20Z,Meteo-IL,TYPE_MISMATCH,visibility: true,Type Error
+2025-11-24T08:09:25Z,SkyGuard,INVALID_ENUM,status: "bogus",Garbage Data
+2025-11-24T08:09:30Z,LogiTrack,MISSING_FIELD,base_id: undefined,Routing Error
+2025-11-24T08:09:35Z,Meteo-IL,INVALID_DATE,timestamp: 0,Reset to Epoch start
+2025-11-24T08:09:40Z,SkyGuard,SCHEMA_VALIDATION,aircraft_id: "",Empty Identifier
+2025-11-24T08:09:45Z,LogiTrack,NEGATIVE_VALUE,quantity: -200,Data Entry Error
+2025-11-24T08:09:50Z,SkyGuard,REGEX_MISMATCH,transponder: "____",Placeholder data sent
+2025-11-24T08:09:55Z,Meteo-IL,GEO_OUT_OF_BOUNDS,lon: 190,Sensor Error
