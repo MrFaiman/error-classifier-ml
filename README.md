@@ -1,10 +1,15 @@
 # Error Classification System
 
-An ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing and Random Forest classification.
+An ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing, featuring both traditional ML (Random Forest) and semantic search approaches.
 
 ## Overview
 
-This project trains a machine learning model to predict which documentation file should be referenced for a given error log. It uses TF-IDF vectorization combined with Random Forest classification to analyze error patterns across different services (logitrack, meteo-il, skyguard) and categorize them into specific error types.
+This project provides two methods for matching error logs to documentation:
+
+1. **Traditional ML Pipeline** (`main.py`): Uses TF-IDF vectorization with Random Forest classification
+2. **Semantic Search Engine** (`semantic_search.py`): Uses transformer-based embeddings (Sentence-BERT) for similarity matching
+
+The system analyzes error patterns across different services (logitrack, meteo-il, skyguard) and categorizes them into specific error types, mapping each to the relevant documentation file.
 
 ## Installation
 
@@ -14,17 +19,24 @@ pip install -r requirements.txt
 
 ## Usage
 
-1. Ensure `errors_dataset.csv` exists with training data
-2. (Optional) Create `input_examples.json` with test cases
-3. Run the script:
+1. Ensure `dataset/errors_dataset.csv` exists with training data
+2. Create `dataset/input_examples.json` with test cases
+3. Run the main script:
 ```bash
 python main.py
 ```
 
 The system will:
-- Train the model on historical error data (or load from checkpoint)
+- Train the Random Forest model on historical error data (or load from checkpoint)
 - Save the trained model to `checkpoints/`
-- Classify any errors in `input_examples.json`
+- Use semantic search to classify errors in `dataset/input_examples.json`
+
+### Standalone Semantic Search
+
+You can also run the semantic search engine independently:
+```bash
+python semantic_search.py
+```
 
 ## Core Functions
 
@@ -111,15 +123,59 @@ doc_path, conf = classify_error(error)
 # conf: 92.45
 ```
 
+## Semantic Search Engine
+
+### `DocumentationSearchEngine` Class
+
+Provides transformer-based semantic similarity matching between error logs and documentation files.
+
+**Initialization:**
+```python
+search_engine = DocumentationSearchEngine(docs_root_dir='docs', model_name='all-MiniLM-L6-v2')
+```
+
+**Parameters:**
+- `docs_root_dir` (str): Root directory containing documentation markdown files
+- `model_name` (str): Sentence-transformers model name (default: 'all-MiniLM-L6-v2')
+
+**How It Works:**
+
+1. **Indexing Phase** (`_index_documents()`):
+   - Scans all `.md` files in the documentation directory
+   - Reads file content and creates combined text (filename + content)
+   - Generates embeddings using Sentence-BERT model
+   - Stores embeddings as tensors for fast similarity computation
+
+2. **Search Phase** (`find_relevant_doc()`):
+   - Encodes the error snippet into an embedding vector
+   - Computes cosine similarity between query and all document embeddings
+   - Returns the most similar document with confidence score
+
+**Advantages over Traditional ML:**
+- No training data required - works immediately with existing docs
+- Understands semantic meaning, not just keyword matching
+- Adapts automatically when documentation is added/updated
+- Better handles paraphrasing and synonyms
+
+**Example:**
+```python
+search_engine = DocumentationSearchEngine(docs_root_dir='docs')
+doc_path, similarity = search_engine.find_relevant_doc(
+    "GPS coordinates out of range: lat=95.0"
+)
+# doc_path: "docs\services\meteo-il\GEO_OUT_OF_BOUNDS.md"
+# similarity: 87.34
+```
+
 ## Data Format
 
-### Training Data (`errors_dataset.csv`)
+### Training Data (`dataset/errors_dataset.csv`)
 ```
 Service,Error_Category,Raw_Input_Snippet,Root_Cause
 logitrack,NEGATIVE_VALUE,"weight: -5kg",Invalid sensor reading
 ```
 
-### Test Data (`input_examples.json`)
+### Test Data (`dataset/input_examples.json`)
 ```json
 [
   {
@@ -128,6 +184,16 @@ logitrack,NEGATIVE_VALUE,"weight: -5kg",Invalid sensor reading
     "Raw_Input_Snippet": "temperature field missing"
   }
 ]
+```
+
+## Configuration
+
+All file paths are centralized in `constants.py`:
+```python
+CHECKPOINT_DIR = 'checkpoints'
+DOCS_ROOT_DIR = 'docs'
+DATASET_PATH = 'dataset\\errors_dataset.csv'
+INPUT_EXAMPLES_PATH = 'dataset\\input_examples.json'
 ```
 
 ## Model Checkpoints
