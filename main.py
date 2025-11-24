@@ -104,9 +104,12 @@ if os.path.exists(INPUT_EXAMPLES_PATH):
     with open(INPUT_EXAMPLES_PATH, 'r', encoding='utf-8') as f:
         new_errors = json.load(f)
 
+    from semantic_search import DocumentationSearchEngine
+    doc_search_engine = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
+
     print("\n--- Running Inference ---")
     for new_error in new_errors:
-        doc_path, conf = classify_error(new_error)
+        doc_path, conf = doc_search_engine.find_relevant_doc(new_error['Raw_Input_Snippet'])
 
         print(f"Input Snippet: {new_error['Raw_Input_Snippet']}")
         print(f"AI Classification: {doc_path}")
