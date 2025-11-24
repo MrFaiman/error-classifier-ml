@@ -2,6 +2,8 @@
 
 A full-stack ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing. Features three advanced classification methods, a Flask REST API, and a modern React web interface.
 
+![Error Classification System Preview](image.png)
+
 ## Architecture
 
 - **Backend**: Python Flask API with ML models (Vector DB, Semantic Search, Random Forest)
