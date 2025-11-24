@@ -5,3 +5,5 @@ joblib
 sentence-transformers
 torch
 chromadb
+flask
+flask-cors
