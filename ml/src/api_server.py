@@ -52,6 +52,11 @@ def verify_and_fallback(doc_path, query_text, method):
     Verify if predicted doc path exists. If not, try fallback methods.
     Returns: (verified_path, confidence, source, is_fallback)
     """
+    # Normalize path and fix common issues (e.g., doubled 'services')
+    doc_path = os.path.normpath(doc_path)
+    doc_path = doc_path.replace('/services/services/', '/services/')
+    doc_path = doc_path.replace('\\services\\services\\', '\\services\\')
+    
     # Check if the predicted path exists
     if os.path.exists(doc_path):
         return doc_path, None, None, False
@@ -304,8 +309,8 @@ def create_doc():
         if not service or not category or not content:
             return jsonify({'error': 'service, category, and content are required'}), 400
         
-        # Create file path
-        filepath = os.path.join(DOCS_ROOT_DIR, 'services', service.lower(), f"{category}.md")
+        # Create file path (DOCS_ROOT_DIR already includes 'services')
+        filepath = os.path.join(DOCS_ROOT_DIR, service.lower(), f"{category}.md")
         
         # Write the file
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
