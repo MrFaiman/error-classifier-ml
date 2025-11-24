@@ -37,8 +37,6 @@ import { classifyError, teachCorrection, getDocContent } from '../services/api';
 
 function SearchPage() {
     const [errorInput, setErrorInput] = useState('');
-    const [service, setService] = useState('');
-    const [errorCategory, setErrorCategory] = useState('');
     const [method, setMethod] = useState('VECTOR_DB');
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
@@ -46,16 +44,6 @@ function SearchPage() {
     const [openCorrectionDialog, setOpenCorrectionDialog] = useState(false);
     const [correctPath, setCorrectPath] = useState('');
     const [feedbackSuccess, setFeedbackSuccess] = useState(null);
-
-    const services = ['logitrack', 'meteo-il', 'skyguard'];
-    const categories = [
-        'MISSING_FIELD',
-        'SCHEMA_VALIDATION',
-        'GEO_OUT_OF_BOUNDS',
-        'NEGATIVE_VALUE',
-        'SECURITY_ALERT',
-        'REGEX_MISMATCH',
-    ];
 
     // Mutation for classification
     const classifyMutation = useMutation({
@@ -95,14 +83,12 @@ function SearchPage() {
 
     const handleSearch = () => {
         if (!errorInput.trim()) {
-            setError('Please enter an error message');
+            setError('Please enter an error log');
             return;
         }
 
         classifyMutation.mutate({
-            service: service || 'unknown',
-            error_category: errorCategory || 'unknown',
-            raw_input_snippet: errorInput,
+            error_log: errorInput,
             method: method,
         });
     };
@@ -154,51 +140,11 @@ function SearchPage() {
                     Error Classification Search
                 </Typography>
                 <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 4 }}>
-                    Enter an error message to find the relevant documentation
+                    Enter any error log (full or partial) to find the relevant documentation
                 </Typography>
 
                 <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
                     <Grid container spacing={3}>
-                        <Grid item xs={12} md={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Service (Optional)</InputLabel>
-                                <Select
-                                    value={service}
-                                    label="Service (Optional)"
-                                    onChange={(e) => setService(e.target.value)}
-                                >
-                                    <MenuItem value="">
-                                        <em>None</em>
-                                    </MenuItem>
-                                    {services.map((s) => (
-                                        <MenuItem key={s} value={s}>
-                                            {s}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid item xs={12} md={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Error Category (Optional)</InputLabel>
-                                <Select
-                                    value={errorCategory}
-                                    label="Error Category (Optional)"
-                                    onChange={(e) => setErrorCategory(e.target.value)}
-                                >
-                                    <MenuItem value="">
-                                        <em>None</em>
-                                    </MenuItem>
-                                    {categories.map((c) => (
-                                        <MenuItem key={c} value={c}>
-                                            {c}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
                         <Grid item xs={12}>
                             <FormControl fullWidth>
                                 <InputLabel>Classification Method</InputLabel>
@@ -218,9 +164,9 @@ function SearchPage() {
                             <TextField
                                 fullWidth
                                 multiline
-                                rows={4}
-                                label="Error Message"
-                                placeholder="Enter the error message or log snippet..."
+                                rows={6}
+                                label="Error Log"
+                                placeholder="Paste full or partial error log, e.g.:\n2025-11-24T08:00:01Z,SkyGuard,SCHEMA_VALIDATION,signal_strength: 999,Sensor Glitch - Value out of range (0-100)\n\nOr just partial:\nsignal_strength: 999\nSensor Glitch"
                                 value={errorInput}
                                 onChange={(e) => setErrorInput(e.target.value)}
                                 variant="outlined"

@@ -67,33 +67,50 @@ class VectorKnowledgeBase:
                     clean_snippet = raw_snippet.strip()
                     clean_cause = root_cause.strip()
 
-                    text_to_embed = f"{service} {category} {clean_snippet}"
-                    
-                    ids.append(f"err_{line_number}")
-                    documents.append(text_to_embed)
-                    
+                    # Create multiple embeddings for better partial matching
+                    # 1. Full error log
+                    full_text = f"{service} {category} {clean_snippet} {clean_cause}"
+                    ids.append(f"err_{line_number}_full")
+                    documents.append(full_text)
                     metadatas.append({
                         "service": service,
                         "category": category,
-                        "doc_path": f"{DOCS_ROOT_DIR}/services/{service.lower()}/{category}.md",
+                        "doc_path": f"{DOCS_ROOT_DIR}/{service.lower()}/{category}.md",
                         "root_cause": clean_cause,
-                        "raw_snippet": clean_snippet
+                        "raw_snippet": clean_snippet,
+                        "match_type": "full"
+                    })
+                    
+                    # 2. Just root cause (for when users search by error message only)
+                    ids.append(f"err_{line_number}_cause")
+                    documents.append(clean_cause)
+                    metadatas.append({
+                        "service": service,
+                        "category": category,
+                        "doc_path": f"{DOCS_ROOT_DIR}/{service.lower()}/{category}.md",
+                        "root_cause": clean_cause,
+                        "raw_snippet": clean_snippet,
+                        "match_type": "cause_only"
+                    })
+                    
+                    # 3. Just raw snippet (for when users search by technical data only)
+                    ids.append(f"err_{line_number}_snippet")
+                    documents.append(f"{service} {category} {clean_snippet}")
+                    metadatas.append({
+                        "service": service,
+                        "category": category,
+                        "doc_path": f"{DOCS_ROOT_DIR}/{service.lower()}/{category}.md",
+                        "root_cause": clean_cause,
+                        "raw_snippet": clean_snippet,
+                        "match_type": "snippet_only"
                     })
 
             if ids:
-                self.docs_col.add(
-                    ids=ids,
-                    documents=documents,
-                    metadatas=metadatas
-                )
-                print(f"Successfully indexed {len(ids)} records into Vector Store.")
-            else:
-                print("No valid records found to index.")
+                self.docs_col.add(ids=ids, documents=documents, metadatas=metadatas)
+                print(f"Indexed {len(ids)} variations (Original records: {line_number}).")
 
-        except FileNotFoundError:
-            print(f"Error: The file '{csv_path}' was not found.")
         except Exception as e:
-            print(f"An error occurred during ingestion: {e}")
+            print(f"Error: {e}")
 
     def search(self, error_query, threshold=0.3):
         print(f"\n--- Analyzing: '{error_query}' ---")

@@ -139,15 +139,13 @@ def classify_error():
     """Classify an error using the specified method"""
     try:
         data = request.json
-        service = data.get('service', '')
-        error_category = data.get('error_category', '')
-        raw_snippet = data.get('raw_input_snippet', '')
+        error_log = data.get('error_log', '')
         method = data.get('method', 'VECTOR_DB')
 
-        if not raw_snippet:
-            return jsonify({'error': 'raw_input_snippet is required'}), 400
+        if not error_log:
+            return jsonify({'error': 'error_log is required'}), 400
 
-        query_text = f"{service} {error_category} {raw_snippet}"
+        query_text = error_log
         doc_path = None
         confidence = None
         source = None
@@ -167,7 +165,7 @@ def classify_error():
             if not semantic_search:
                 return jsonify({'error': 'Semantic Search not available'}), 503
             
-            doc_path, confidence = semantic_search.find_relevant_doc(raw_snippet)
+            doc_path, confidence = semantic_search.find_relevant_doc(error_log)
             confidence = float(confidence)
             source = 'SEMANTIC_SEARCH'
 

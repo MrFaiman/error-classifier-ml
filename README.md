@@ -345,9 +345,9 @@ meteo-il,MISSING_FIELD,"temperature field missing",Required field not provided
 ```json
 [
   {
-    "Service": "meteo-il",
-    "Error_Category": "MISSING_FIELD",
-    "Raw_Input_Snippet": "temperature field missing"
+    "Service": "Meteo-IL",
+    "Error_Category": "GEO_OUT_OF_BOUNDS",
+    "Root_Cause": "GPS Failure - Longitude out of valid range"
   }
 ]
 ```

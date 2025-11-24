@@ -43,7 +43,6 @@ def load_and_prep_data(csv_path):
     df['combined_features'] = (
         df['Service'] + " " +
         df['Error_Category'] + " " +
-        df['Raw_Input_Snippet'] + " " +
         df['Root_Cause']
     )
 
@@ -92,7 +91,7 @@ if model is None:
     save_checkpoint(model)
 
 def classify_error(log_line_dict):
-    input_text = f"{log_line_dict['Service']} {log_line_dict['Error_Category']} {log_line_dict['Raw_Input_Snippet']}"
+    input_text = f"{log_line_dict['Service']} {log_line_dict['Error_Category']} {log_line_dict['Root_Cause']}"
     
     prediction = model.predict([input_text])[0]
     probs = model.predict_proba([input_text])
@@ -113,9 +112,9 @@ if os.path.exists(INPUT_EXAMPLES_PATH):
         
         print("\n--- Running Inference (Vector DB) ---")
         for new_error in new_errors:
-            result = vector_kb.search(new_error['Raw_Input_Snippet'])
+            result = vector_kb.search(new_error['Root_Cause'])
             
-            print(f"Input Snippet: {new_error['Raw_Input_Snippet']}")
+            print(f"Error Message: {new_error['Root_Cause']}")
             print(f"AI Classification: {result['doc_path']}")
             print(f"Source: {result['source']}")
             if 'confidence' in result:
@@ -127,9 +126,9 @@ if os.path.exists(INPUT_EXAMPLES_PATH):
 
         print("\n--- Running Inference (Semantic Search) ---")
         for new_error in new_errors:
-            doc_path, conf = doc_search_engine.find_relevant_doc(new_error['Raw_Input_Snippet'])
+            doc_path, conf = doc_search_engine.find_relevant_doc(new_error['Root_Cause'])
 
-            print(f"Input Snippet: {new_error['Raw_Input_Snippet']}")
+            print(f"Error Message: {new_error['Root_Cause']}")
             print(f"AI Classification: {doc_path}")
             print(f"Confidence Level: {conf:.2f}%")
             print("-" * 30)
