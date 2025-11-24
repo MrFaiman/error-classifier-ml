@@ -262,6 +262,12 @@ function SearchPage() {
                             </Typography>
                             <Divider sx={{ mb: 2 }} />
 
+                            {result.warning && (
+                                <Alert severity="warning" sx={{ mb: 2 }}>
+                                    {result.warning}
+                                </Alert>
+                            )}
+
                             <Box sx={{ mb: 2 }}>
                                 <Typography variant="body2" color="text.secondary" gutterBottom>
                                     Documentation Path

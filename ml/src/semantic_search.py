@@ -2,10 +2,12 @@ import os
 import glob
 import torch
 from sentence_transformers import SentenceTransformer, util
-from constants import EMBEDDING_MODEL
+from constants import EMBEDDING_MODEL, DOCS_ROOT_DIR
 
 class DocumentationSearchEngine:
-    def __init__(self, docs_root_dir='dataset\\docs', model_name=None):
+    def __init__(self, docs_root_dir=None, model_name=None):
+        if docs_root_dir is None:
+            docs_root_dir = DOCS_ROOT_DIR
         self.docs_root_dir = docs_root_dir
         if model_name is None:
             model_name = EMBEDDING_MODEL

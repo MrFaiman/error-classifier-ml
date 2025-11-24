@@ -2,10 +2,12 @@ import pandas as pd
 import chromadb
 from chromadb.utils import embedding_functions
 import os
-from constants import DATASET_PATH, DOCS_ROOT_DIR, EMBEDDING_MODEL
+from constants import DATASET_PATH, DOCS_ROOT_DIR, EMBEDDING_MODEL, CHROMA_DB_DIR
 
 class VectorKnowledgeBase:
-    def __init__(self, db_path="./chroma_db"):
+    def __init__(self, db_path=None):
+        if db_path is None:
+            db_path = CHROMA_DB_DIR
         self.client = chromadb.PersistentClient(path=db_path)
         
         self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(

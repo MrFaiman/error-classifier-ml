@@ -1,15 +1,14 @@
 services:
   backend:
     build:
-      context: .
+      context: ../ml
       dockerfile: Dockerfile
     container_name: error-classifier-backend
     ports:
       - "5000:5000"
     volumes:
-      - ./dataset:/app/dataset
-      - ./checkpoints:/app/checkpoints
-      - chroma_data:/app/chroma_db
+      - ../data:/app/data
+      - ../models:/app/models
     environment:
       - PYTHONUNBUFFERED=1
       - FLASK_ENV=production
@@ -23,7 +22,7 @@ services:
 
   frontend:
     build:
-      context: ./ui
+      context: ../ui
       dockerfile: Dockerfile
     container_name: error-classifier-frontend
     ports:
@@ -36,10 +35,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-volumes:
-  chroma_data:
-    driver: local
 
 networks:
   default:

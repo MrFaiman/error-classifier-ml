@@ -1,3 +1,48 @@
+# Python
 __pycache__/
-checkpoints/
-chroma_db/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+env/
+ENV/
+
+# Models and data
+models/checkpoints/*.pkl
+models/chroma_db/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node (Frontend)
+ui/node_modules/
+ui/build/
+ui/dist/
+ui/.vite/
+
+# Docker
+.dockerignore

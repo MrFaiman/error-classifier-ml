@@ -1,5 +1,0 @@
-CHECKPOINT_DIR = 'checkpoints'
-DOCS_ROOT_DIR = 'dataset\\docs'
-DATASET_PATH = 'dataset\\errors_dataset.csv'
-INPUT_EXAMPLES_PATH = 'dataset\\input_examples.json'
-EMBEDDING_MODEL = 'all-MiniLM-L6-v2'

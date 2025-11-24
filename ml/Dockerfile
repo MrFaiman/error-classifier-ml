@@ -6,6 +6,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -15,19 +16,18 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY *.py .
-COPY dataset/ ./dataset/
-COPY checkpoints/ ./checkpoints/
+COPY src/ ./src/
 
-# Create directory for ChromaDB persistence
-RUN mkdir -p /app/chroma_db
+# Create directories for data and models (mounted as volumes)
+RUN mkdir -p /app/data /app/models/chroma_db /app/models/checkpoints
 
 # Expose Flask port
 EXPOSE 5000
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV FLASK_APP=api_server.py
+ENV PYTHONPATH=/app/src
+ENV FLASK_APP=src/api_server.py
 
 # Run the Flask server
-CMD ["python", "api_server.py"]
+CMD ["python", "src/api_server.py"]

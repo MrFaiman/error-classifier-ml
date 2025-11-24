@@ -13,7 +13,7 @@ from datetime import datetime
 # Import classification modules
 from vector_db_classifier import VectorKnowledgeBase, initialize_vector_db
 from semantic_search import DocumentationSearchEngine
-from constants import DOCS_ROOT_DIR, DATASET_PATH
+from constants import DOCS_ROOT_DIR, DATASET_PATH, CHECKPOINT_DIR
 import joblib
 import numpy as np
 
@@ -39,12 +39,94 @@ except Exception as e:
     print(f"✗ Semantic Search failed: {e}")
 
 try:
-    latest_model = os.path.join('checkpoints', 'latest_model.pkl')
+    latest_model = os.path.join(CHECKPOINT_DIR, 'latest_model.pkl')
     if os.path.exists(latest_model):
         rf_model = joblib.load(latest_model)
         print("✓ Random Forest model loaded")
 except Exception as e:
     print(f"✗ Random Forest model failed: {e}")
+
+
+def verify_and_fallback(doc_path, query_text, method):
+    """
+    Verify if predicted doc path exists. If not, try fallback methods.
+    Returns: (verified_path, confidence, source, is_fallback)
+    """
+    # Check if the predicted path exists
+    if os.path.exists(doc_path):
+        return doc_path, None, None, False
+    
+    print(f"⚠ Predicted path does not exist: {doc_path}")
+    print(f"🔄 Attempting fallback methods...")
+    
+    # Try fallback methods in order of preference
+    fallback_results = []
+    
+    # Try Vector DB if not the original method
+    if method != 'VECTOR_DB' and vector_kb:
+        try:
+            result = vector_kb.search(query_text)
+            fallback_path = result['doc_path']
+            if os.path.exists(fallback_path):
+                confidence = parse_confidence(result.get('confidence', 'Unknown'))
+                print(f"✓ Fallback: Vector DB found valid path")
+                return fallback_path, confidence, 'VECTOR_DB (Fallback)', True
+            fallback_results.append(('VECTOR_DB', fallback_path))
+        except Exception as e:
+            print(f"✗ Vector DB fallback failed: {e}")
+    
+    # Try Semantic Search if not the original method
+    if method != 'SEMANTIC_SEARCH' and semantic_search:
+        try:
+            fallback_path, confidence = semantic_search.find_relevant_doc(query_text)
+            if os.path.exists(fallback_path):
+                print(f"✓ Fallback: Semantic Search found valid path")
+                return fallback_path, float(confidence), 'SEMANTIC_SEARCH (Fallback)', True
+            fallback_results.append(('SEMANTIC_SEARCH', fallback_path))
+        except Exception as e:
+            print(f"✗ Semantic Search fallback failed: {e}")
+    
+    # Try Random Forest if not the original method
+    if method != 'RANDOM_FOREST' and rf_model:
+        try:
+            prediction = rf_model.predict([query_text])[0]
+            probs = rf_model.predict_proba([query_text])
+            if os.path.exists(prediction):
+                confidence = float(np.max(probs) * 100)
+                print(f"✓ Fallback: Random Forest found valid path")
+                return prediction, confidence, 'RANDOM_FOREST (Fallback)', True
+            fallback_results.append(('RANDOM_FOREST', prediction))
+        except Exception as e:
+            print(f"✗ Random Forest fallback failed: {e}")
+    
+    # If all fallbacks failed, try to find closest existing file
+    print(f"⚠ All fallback methods failed or returned non-existent paths")
+    print(f"🔍 Searching for closest existing documentation file...")
+    
+    # Get all available docs
+    pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
+    available_files = glob.glob(pattern, recursive=True)
+    
+    if available_files:
+        # Try to match by service and category from the original path
+        doc_parts = doc_path.replace('\\', '/').split('/')
+        
+        # Look for files with similar names
+        for file in available_files:
+            file_parts = file.replace('\\', '/').split('/')
+            if len(doc_parts) >= 2 and len(file_parts) >= 2:
+                # Check if service and category match
+                if doc_parts[-2] == file_parts[-2] or doc_parts[-1] == file_parts[-1]:
+                    print(f"✓ Found similar file: {file}")
+                    return file, 50.0, f'{method} (Best Match)', True
+        
+        # If no similar file found, return the first available doc
+        print(f"✓ Using first available doc as last resort: {available_files[0]}")
+        return available_files[0], 30.0, f'{method} (Fallback - First Available)', True
+    
+    # Absolute last resort - return the original path with warning
+    print(f"✗ No documentation files found in system")
+    return doc_path, 0.0, f'{method} (File Not Found)', False
 
 
 @app.route('/api/classify', methods=['POST'])
@@ -60,49 +142,69 @@ def classify_error():
         if not raw_snippet:
             return jsonify({'error': 'raw_input_snippet is required'}), 400
 
+        query_text = f"{service} {error_category} {raw_snippet}"
+        doc_path = None
+        confidence = None
+        source = None
+        root_cause = ''
+
         if method == 'VECTOR_DB':
             if not vector_kb:
                 return jsonify({'error': 'Vector DB not available'}), 503
             
-            query = f"{service} {error_category} {raw_snippet}"
-            result = vector_kb.search(query)
-            
-            return jsonify({
-                'doc_path': result['doc_path'],
-                'confidence': parse_confidence(result.get('confidence', 'Unknown')),
-                'source': result['source'],
-                'root_cause': result.get('root_cause', '')
-            })
+            result = vector_kb.search(query_text)
+            doc_path = result['doc_path']
+            confidence = parse_confidence(result.get('confidence', 'Unknown'))
+            source = result['source']
+            root_cause = result.get('root_cause', '')
 
         elif method == 'SEMANTIC_SEARCH':
             if not semantic_search:
                 return jsonify({'error': 'Semantic Search not available'}), 503
             
             doc_path, confidence = semantic_search.find_relevant_doc(raw_snippet)
-            
-            return jsonify({
-                'doc_path': doc_path,
-                'confidence': float(confidence),
-                'source': 'SEMANTIC_SEARCH'
-            })
+            confidence = float(confidence)
+            source = 'SEMANTIC_SEARCH'
 
         elif method == 'RANDOM_FOREST':
             if not rf_model:
                 return jsonify({'error': 'Random Forest model not available'}), 503
             
-            input_text = f"{service} {error_category} {raw_snippet}"
-            prediction = rf_model.predict([input_text])[0]
-            probs = rf_model.predict_proba([input_text])
+            doc_path = rf_model.predict([query_text])[0]
+            probs = rf_model.predict_proba([query_text])
             confidence = float(np.max(probs) * 100)
-            
-            return jsonify({
-                'doc_path': prediction,
-                'confidence': confidence,
-                'source': 'RANDOM_FOREST'
-            })
+            source = 'RANDOM_FOREST'
 
         else:
             return jsonify({'error': 'Invalid method'}), 400
+
+        # Verify path exists and try fallbacks if needed
+        verified_path, fallback_conf, fallback_source, is_fallback = verify_and_fallback(
+            doc_path, query_text, method
+        )
+        
+        # Use fallback values if path was corrected
+        if is_fallback:
+            if fallback_conf is not None:
+                confidence = fallback_conf
+            if fallback_source is not None:
+                source = fallback_source
+        
+        response = {
+            'doc_path': verified_path,
+            'confidence': confidence,
+            'source': source,
+        }
+        
+        if root_cause:
+            response['root_cause'] = root_cause
+        
+        if is_fallback and not os.path.exists(verified_path):
+            response['warning'] = 'Predicted file does not exist. No valid alternative found.'
+        elif is_fallback:
+            response['warning'] = f'Original prediction not found. Using fallback method.'
+        
+        return jsonify(response)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

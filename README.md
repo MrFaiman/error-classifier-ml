@@ -1,38 +1,104 @@
 # Error Classification System
 
-An ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing, featuring three advanced classification approaches.
+A full-stack ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing. Features three advanced classification methods, a Flask REST API, and a modern React web interface.
 
-## Overview
+## 🏗️ Architecture
 
-This project provides three methods for matching error logs to documentation:
+- **Backend**: Python Flask API with ML models (Vector DB, Semantic Search, Random Forest)
+- **Frontend**: React + Vite + Material-UI + TanStack Router/Query
+- **Database**: ChromaDB for persistent vector storage with learning capability
+- **Deployment**: Docker + Docker Compose for easy deployment
 
-1. **Vector Database with ChromaDB** (`vector_db_classifier.py`): Persistent vector store with learned feedback capability
-2. **Semantic Search Engine** (`semantic_search.py`): Real-time transformer-based embeddings (Sentence-BERT) for similarity matching
-3. **Traditional ML Pipeline** (`main.py`): TF-IDF vectorization with Random Forest classification
+## 🚀 Quick Start
 
-The system analyzes error patterns across different services (logitrack, meteo-il, skyguard) and categorizes them into specific error types, mapping each to the relevant documentation file.
-
-## Installation
+### Using Docker (Recommended)
 
 ```bash
-pip install -r requirements.txt
+cd docker
+docker-compose up -d --build
 ```
 
-## Usage
+Access the application:
+- **Frontend**: http://localhost
+- **API**: http://localhost:5000/api/status
+
+See [DOCKER.md](DOCKER.md) for detailed Docker instructions.
+
+### Local Development
+
+#### Backend Setup
+```bash
+cd ml
+pip install -r requirements.txt
+python src/api_server.py
+```
+
+Backend runs at http://localhost:5000
+
+#### Frontend Setup
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+Frontend runs at http://localhost:3000
+
+## 🎯 Classification Methods
+
+The system provides three methods for matching error logs to documentation:
+
+1. **Vector Database with ChromaDB** (Default): Persistent vector store with learned feedback capability
+2. **Semantic Search Engine**: Real-time transformer-based embeddings (Sentence-BERT)
+3. **Traditional ML Pipeline**: TF-IDF vectorization with Random Forest classification
+
+## 🌐 Web Interface
+
+The React UI provides:
+- **Search Page**: Classify errors with any of the three methods
+- **Manage Docs**: CRUD operations for documentation files
+- **Manage Dataset**: Edit training data records
+- **Status Page**: System health and metrics (auto-refreshing)
+- **Feedback System**: Thumbs up/down with correction learning
+
+## 📡 REST API
+
+All endpoints available at `/api`:
+
+**Classification**
+- `POST /api/classify` - Classify error with specified method
+- `POST /api/teach-correction` - Teach system a correction
+
+**Documentation**
+- `GET /api/docs` - List all documentation files
+- `GET /api/doc-content?path=...` - Get file content
+- `POST /api/docs` - Create new doc
+- `PUT /api/docs/:id` - Update doc
+- `DELETE /api/docs/:id` - Delete doc
+
+**Dataset**
+- `GET /api/dataset` - List all records
+- `POST /api/dataset` - Add record
+- `PUT /api/dataset/:id` - Update record
+- `DELETE /api/dataset/:id` - Delete record
+
+**System**
+- `GET /api/status` - System health
+- `POST /api/update-kb` - Rebuild vector DB
+
+## 💻 CLI Usage
 
 ### Main Classification System
 
-1. Ensure `dataset/errors_dataset.csv` exists with training data
-2. Create `dataset/input_examples.json` with test cases
-3. Run the main script:
 ```bash
-python main.py
+cd ml
+python src/main.py
 ```
 
 The system will:
 - Train the Random Forest model on historical error data (or load from checkpoint)
-- Save the trained model to `checkpoints/`
-- Classify errors using Vector DB (default) or Semantic Search based on `USE_VECTOR_DB` flag
+- Save the trained model to `models/checkpoints/`
+- Classify errors from `data/input_examples.json`
 
 To switch between classification methods, edit `main.py`:
 ```python
@@ -44,17 +110,17 @@ USE_VECTOR_DB = False  # Use Semantic Search
 
 **Semantic Search:**
 ```bash
-python semantic_search.py
+python src/semantic_search.py
 ```
 
 **Vector DB Classifier:**
 ```bash
-python vector_db_classifier.py
+python src/vector_db_classifier.py
 ```
 
 **Interactive Feedback Session:**
 ```bash
-python interactive_feedback.py
+python src/interactive_feedback.py
 ```
 Provides a REPL interface to classify errors and teach the system corrections in real-time.
 
@@ -115,7 +181,7 @@ Performs inference on a single error log entry and returns the predicted documen
    ```
    - Passes the text through the TF-IDF vectorizer (transforms to numerical features)
    - Random Forest classifier votes on the most likely documentation path
-   - Returns the predicted file path (e.g., `dataset\docs\services\meteo-il\MISSING_FIELD.md`)
+   - Returns the predicted file path (e.g., `data/services/meteo-il/MISSING_FIELD.md`)
 
 3. **Confidence Calculation:**
    ```python
@@ -139,7 +205,7 @@ error = {
     "Raw_Input_Snippet": "Required field 'temperature' not found in payload"
 }
 doc_path, conf = classify_error(error)
-# doc_path: "dataset\\docs\\services\\meteo-il\\MISSING_FIELD.md"
+# doc_path: "data/services/meteo-il/MISSING_FIELD.md"
 # conf: 92.45
 ```
 
@@ -151,11 +217,14 @@ Provides transformer-based semantic similarity matching between error logs and d
 
 **Initialization:**
 ```python
-search_engine = DocumentationSearchEngine(docs_root_dir='dataset\\docs')
+search_engine = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
 # Uses default model from constants.py (all-MiniLM-L6-v2)
 
 # Or specify custom model
-search_engine = DocumentationSearchEngine(docs_root_dir='dataset\\docs', model_name='custom-model')
+search_engine = DocumentationSearchEngine(
+    docs_root_dir=DOCS_ROOT_DIR, 
+    model_name='custom-model'
+)
 ```
 
 **Parameters:**
@@ -183,11 +252,11 @@ search_engine = DocumentationSearchEngine(docs_root_dir='dataset\\docs', model_n
 
 **Example:**
 ```python
-search_engine = DocumentationSearchEngine(docs_root_dir='dataset\\docs')
+search_engine = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
 doc_path, similarity = search_engine.find_relevant_doc(
     "GPS coordinates out of range: lat=95.0"
 )
-# doc_path: "dataset\\docs\\services\\meteo-il\\GEO_OUT_OF_BOUNDS.md"
+# doc_path: "data/services/meteo-il/GEO_OUT_OF_BOUNDS.md"
 # similarity: 87.34
 ```
 
@@ -225,7 +294,7 @@ kb.populate_initial_knowledge(DATASET_PATH)
    # System learns from corrections
    kb.teach_system(
        error_text="DELETE FROM users WHERE admin=true",
-       correct_doc_path="dataset/docs/services/logitrack/SQL_INJECTION.md"
+       correct_doc_path="data/services/logitrack/SQL_INJECTION.md"
    )
    # Next search will prioritize this learned knowledge
    ```
@@ -253,7 +322,7 @@ print(result)
 # {'source': 'OFFICIAL_KNOWLEDGE', 'doc_path': '...', 'confidence': 'Normal'}
 
 # Teach correction
-kb.teach_system("DROP TABLE users", "dataset/docs/services/logitrack/SECURITY_ALERT.md")
+kb.teach_system("DROP TABLE users", "data/services/logitrack/SECURITY_ALERT.md")
 
 # Second search - now uses learned knowledge
 result = kb.search("DROP TABLE users")
@@ -263,13 +332,14 @@ print(result)
 
 ## Data Format
 
-### Training Data (`dataset/errors_dataset.csv`)
-```
+### Training Data (`data/dataset/errors_dataset.csv`)
+```csv
 Service,Error_Category,Raw_Input_Snippet,Root_Cause
 logitrack,NEGATIVE_VALUE,"weight: -5kg",Invalid sensor reading
+meteo-il,MISSING_FIELD,"temperature field missing",Required field not provided
 ```
 
-### Test Data (`dataset/input_examples.json`)
+### Test Data (`data/input_examples.json`)
 ```json
 [
   {
@@ -280,45 +350,65 @@ logitrack,NEGATIVE_VALUE,"weight: -5kg",Invalid sensor reading
 ]
 ```
 
+### Documentation Files (`data/services/`)
+```
+data/services/
+├── logitrack/
+│   ├── NEGATIVE_VALUE.md
+│   └── SECURITY_ALERT.md
+├── meteo-il/
+│   ├── GEO_OUT_OF_BOUNDS.md
+│   └── MISSING_FIELD.md
+└── skyguard/
+    ├── REGEX_MISMATCH.md
+    └── SCHEMA_VALIDATION.md
+```
+
 ## Configuration
 
-All file paths are centralized in `constants.py`:
+All file paths are automatically detected in `ml/src/constants.py`:
+
 ```python
-CHECKPOINT_DIR = 'checkpoints'
-DOCS_ROOT_DIR = 'dataset\\docs'
-DATASET_PATH = 'dataset\\errors_dataset.csv'
-INPUT_EXAMPLES_PATH = 'dataset\\input_examples.json'
-EMBEDDING_MODEL = 'all-MiniLM-L6-v2'  # Sentence-transformers model for embeddings
+# Base directories (auto-detected from file location)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MODELS_DIR = os.path.join(BASE_DIR, 'models')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+
+# Model paths
+CHECKPOINT_DIR = os.path.join(MODELS_DIR, 'checkpoints')
+CHROMA_DB_DIR = os.path.join(MODELS_DIR, 'chroma_db')
+
+# Data paths
+DOCS_ROOT_DIR = os.path.join(DATA_DIR, 'services')
+DATASET_PATH = os.path.join(DATA_DIR, 'dataset', 'errors_dataset.csv')
+INPUT_EXAMPLES_PATH = os.path.join(DATA_DIR, 'input_examples.json')
+
+# Model configuration
+EMBEDDING_MODEL = 'all-MiniLM-L6-v2'  # Sentence-transformers model
 ```
+
+No manual path configuration needed! Works in Docker and local environments.
 
 ## Storage and Persistence
 
 ### Model Checkpoints (Traditional ML)
-Models are automatically saved to `checkpoints/` with timestamps and as `latest_model.pkl`. Set `FORCE_RETRAIN = False` to reuse the latest checkpoint.
+Models are automatically saved to `models/checkpoints/` with timestamps and as `latest_model.pkl`. Set `FORCE_RETRAIN = False` to reuse the latest checkpoint.
 
 ### Vector Database (ChromaDB)
-Vector embeddings and learned feedback are persisted in `chroma_db/` directory:
+Vector embeddings and learned feedback are persisted in `models/chroma_db/`:
 - Survives across sessions
 - No need to re-index on restart
 - Learned corrections are permanent
 - Can be version controlled or backed up
 
-## Project Structure
+## 🧪 Testing
 
-```
-errors_classification/
-├── main.py                    # Main classifier with method selection
-├── vector_db_classifier.py    # ChromaDB vector store implementation
-├── semantic_search.py         # Real-time semantic search
-├── interactive_feedback.py    # Interactive REPL for learning
-├── constants.py               # Centralized configuration
-├── requirements.txt           # Python dependencies
-├── README.md                  # Documentation
-├── dataset/
-│   ├── errors_dataset.csv     # Training data
-│   ├── input_examples.json    # Test cases
-│   └── docs/
-│       └── services/          # Documentation files
-├── checkpoints/               # Trained ML models
-└── chroma_db/                 # Vector database storage
+```bash
+# Backend tests (when available)
+cd ml
+pytest
+
+# Frontend tests
+cd ui
+npm test
 ```
