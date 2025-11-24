@@ -1,13 +1,14 @@
 # Error Classification System
 
-An ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing, featuring both traditional ML (Random Forest) and semantic search approaches.
+An ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing, featuring three advanced classification approaches.
 
 ## Overview
 
-This project provides two methods for matching error logs to documentation:
+This project provides three methods for matching error logs to documentation:
 
-1. **Traditional ML Pipeline** (`main.py`): Uses TF-IDF vectorization with Random Forest classification
-2. **Semantic Search Engine** (`semantic_search.py`): Uses transformer-based embeddings (Sentence-BERT) for similarity matching
+1. **Vector Database with ChromaDB** (`vector_db_classifier.py`): Persistent vector store with learned feedback capability
+2. **Semantic Search Engine** (`semantic_search.py`): Real-time transformer-based embeddings (Sentence-BERT) for similarity matching
+3. **Traditional ML Pipeline** (`main.py`): TF-IDF vectorization with Random Forest classification
 
 The system analyzes error patterns across different services (logitrack, meteo-il, skyguard) and categorizes them into specific error types, mapping each to the relevant documentation file.
 
@@ -19,6 +20,8 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Main Classification System
+
 1. Ensure `dataset/errors_dataset.csv` exists with training data
 2. Create `dataset/input_examples.json` with test cases
 3. Run the main script:
@@ -29,14 +32,31 @@ python main.py
 The system will:
 - Train the Random Forest model on historical error data (or load from checkpoint)
 - Save the trained model to `checkpoints/`
-- Use semantic search to classify errors in `dataset/input_examples.json`
+- Classify errors using Vector DB (default) or Semantic Search based on `USE_VECTOR_DB` flag
 
-### Standalone Semantic Search
+To switch between classification methods, edit `main.py`:
+```python
+USE_VECTOR_DB = True   # Use Vector DB with learned feedback
+USE_VECTOR_DB = False  # Use Semantic Search
+```
 
-You can also run the semantic search engine independently:
+### Standalone Tools
+
+**Semantic Search:**
 ```bash
 python semantic_search.py
 ```
+
+**Vector DB Classifier:**
+```bash
+python vector_db_classifier.py
+```
+
+**Interactive Feedback Session:**
+```bash
+python interactive_feedback.py
+```
+Provides a REPL interface to classify errors and teach the system corrections in real-time.
 
 ## Core Functions
 
@@ -95,7 +115,7 @@ Performs inference on a single error log entry and returns the predicted documen
    ```
    - Passes the text through the TF-IDF vectorizer (transforms to numerical features)
    - Random Forest classifier votes on the most likely documentation path
-   - Returns the predicted file path (e.g., `docs\services\meteo-il\MISSING_FIELD.md`)
+   - Returns the predicted file path (e.g., `dataset\docs\services\meteo-il\MISSING_FIELD.md`)
 
 3. **Confidence Calculation:**
    ```python
@@ -119,7 +139,7 @@ error = {
     "Raw_Input_Snippet": "Required field 'temperature' not found in payload"
 }
 doc_path, conf = classify_error(error)
-# doc_path: "docs\services\meteo-il\MISSING_FIELD.md"
+# doc_path: "dataset\\docs\\services\\meteo-il\\MISSING_FIELD.md"
 # conf: 92.45
 ```
 
@@ -131,12 +151,16 @@ Provides transformer-based semantic similarity matching between error logs and d
 
 **Initialization:**
 ```python
-search_engine = DocumentationSearchEngine(docs_root_dir='docs', model_name='all-MiniLM-L6-v2')
+search_engine = DocumentationSearchEngine(docs_root_dir='dataset\\docs')
+# Uses default model from constants.py (all-MiniLM-L6-v2)
+
+# Or specify custom model
+search_engine = DocumentationSearchEngine(docs_root_dir='dataset\\docs', model_name='custom-model')
 ```
 
 **Parameters:**
 - `docs_root_dir` (str): Root directory containing documentation markdown files
-- `model_name` (str): Sentence-transformers model name (default: 'all-MiniLM-L6-v2')
+- `model_name` (str, optional): Sentence-transformers model name (default: from `constants.EMBEDDING_MODEL`)
 
 **How It Works:**
 
@@ -159,12 +183,82 @@ search_engine = DocumentationSearchEngine(docs_root_dir='docs', model_name='all-
 
 **Example:**
 ```python
-search_engine = DocumentationSearchEngine(docs_root_dir='docs')
+search_engine = DocumentationSearchEngine(docs_root_dir='dataset\\docs')
 doc_path, similarity = search_engine.find_relevant_doc(
     "GPS coordinates out of range: lat=95.0"
 )
-# doc_path: "docs\services\meteo-il\GEO_OUT_OF_BOUNDS.md"
+# doc_path: "dataset\\docs\\services\\meteo-il\\GEO_OUT_OF_BOUNDS.md"
 # similarity: 87.34
+```
+
+## Vector Database Classifier
+
+### `VectorKnowledgeBase` Class
+
+Provides persistent vector storage with ChromaDB and dynamic learning capabilities through user feedback.
+
+**Initialization:**
+```python
+from vector_db_classifier import VectorKnowledgeBase, initialize_vector_db
+
+# Initialize and populate from dataset
+kb = initialize_vector_db()
+
+# Or create instance directly
+kb = VectorKnowledgeBase(db_path="./chroma_db")
+kb.populate_initial_knowledge(DATASET_PATH)
+```
+
+**Key Features:**
+
+1. **Dual Collection Architecture:**
+   - `official_docs`: Static knowledge base from training data
+   - `learned_feedback`: Dynamic corrections from user feedback
+
+2. **Smart Search Priority:**
+   - First checks learned feedback (high confidence threshold: distance < 0.4)
+   - Falls back to official knowledge base
+   - Returns source information for transparency
+
+3. **Continuous Learning:**
+   ```python
+   # System learns from corrections
+   kb.teach_system(
+       error_text="DELETE FROM users WHERE admin=true",
+       correct_doc_path="dataset/docs/services/logitrack/SQL_INJECTION.md"
+   )
+   # Next search will prioritize this learned knowledge
+   ```
+
+**Methods:**
+
+- `populate_initial_knowledge(csv_path)`: Loads training data into vector DB (one-time operation)
+- `search(error_query)`: Returns best matching doc with source and confidence
+- `teach_system(error_text, correct_doc_path)`: Adds user correction to learned feedback
+
+**Advantages:**
+- **Persistent Storage**: Data persists across sessions (ChromaDB on disk)
+- **Learning Capability**: Improves over time with user corrections
+- **No Retraining**: Updates happen instantly without model retraining
+- **Semantic Understanding**: Uses same embeddings as semantic search
+- **Transparent Sources**: Distinguishes between official knowledge and learned corrections
+
+**Example:**
+```python
+kb = initialize_vector_db()
+
+# First search
+result = kb.search("DROP TABLE users")
+print(result)
+# {'source': 'OFFICIAL_KNOWLEDGE', 'doc_path': '...', 'confidence': 'Normal'}
+
+# Teach correction
+kb.teach_system("DROP TABLE users", "dataset/docs/services/logitrack/SECURITY_ALERT.md")
+
+# Second search - now uses learned knowledge
+result = kb.search("DROP TABLE users")
+print(result)
+# {'source': 'LEARNED_MEMORY (Feedback)', 'doc_path': '...', 'confidence': 'High'}
 ```
 
 ## Data Format
@@ -191,11 +285,40 @@ logitrack,NEGATIVE_VALUE,"weight: -5kg",Invalid sensor reading
 All file paths are centralized in `constants.py`:
 ```python
 CHECKPOINT_DIR = 'checkpoints'
-DOCS_ROOT_DIR = 'docs'
+DOCS_ROOT_DIR = 'dataset\\docs'
 DATASET_PATH = 'dataset\\errors_dataset.csv'
 INPUT_EXAMPLES_PATH = 'dataset\\input_examples.json'
+EMBEDDING_MODEL = 'all-MiniLM-L6-v2'  # Sentence-transformers model for embeddings
 ```
 
-## Model Checkpoints
+## Storage and Persistence
 
+### Model Checkpoints (Traditional ML)
 Models are automatically saved to `checkpoints/` with timestamps and as `latest_model.pkl`. Set `FORCE_RETRAIN = False` to reuse the latest checkpoint.
+
+### Vector Database (ChromaDB)
+Vector embeddings and learned feedback are persisted in `chroma_db/` directory:
+- Survives across sessions
+- No need to re-index on restart
+- Learned corrections are permanent
+- Can be version controlled or backed up
+
+## Project Structure
+
+```
+errors_classification/
+├── main.py                    # Main classifier with method selection
+├── vector_db_classifier.py    # ChromaDB vector store implementation
+├── semantic_search.py         # Real-time semantic search
+├── interactive_feedback.py    # Interactive REPL for learning
+├── constants.py               # Centralized configuration
+├── requirements.txt           # Python dependencies
+├── README.md                  # Documentation
+├── dataset/
+│   ├── errors_dataset.csv     # Training data
+│   ├── input_examples.json    # Test cases
+│   └── docs/
+│       └── services/          # Documentation files
+├── checkpoints/               # Trained ML models
+└── chroma_db/                 # Vector database storage
+```
