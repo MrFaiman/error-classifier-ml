@@ -2,10 +2,13 @@ import os
 import glob
 import torch
 from sentence_transformers import SentenceTransformer, util
+from constants import EMBEDDING_MODEL
 
 class DocumentationSearchEngine:
-    def __init__(self, docs_root_dir='docs', model_name='all-MiniLM-L6-v2'):
+    def __init__(self, docs_root_dir='dataset\\docs', model_name=None):
         self.docs_root_dir = docs_root_dir
+        if model_name is None:
+            model_name = EMBEDDING_MODEL
         print(f"Loading Embedding Model ({model_name})...")
         self.model = SentenceTransformer(model_name)
         
