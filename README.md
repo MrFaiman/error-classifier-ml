@@ -2,14 +2,14 @@
 
 A full-stack ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing. Features three advanced classification methods, a Flask REST API, and a modern React web interface.
 
-## 🏗️ Architecture
+## Architecture
 
 - **Backend**: Python Flask API with ML models (Vector DB, Semantic Search, Random Forest)
 - **Frontend**: React + Vite + Material-UI + TanStack Router/Query
 - **Database**: ChromaDB for persistent vector storage with learning capability
 - **Deployment**: Docker + Docker Compose for easy deployment
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Using Docker (Recommended)
 
@@ -44,7 +44,7 @@ npm run dev
 
 Frontend runs at http://localhost:3000
 
-## 🎯 Classification Methods
+## Classification Methods
 
 The system provides three methods for matching error logs to documentation:
 
@@ -52,7 +52,7 @@ The system provides three methods for matching error logs to documentation:
 2. **Semantic Search Engine**: Real-time transformer-based embeddings (Sentence-BERT)
 3. **Traditional ML Pipeline**: TF-IDF vectorization with Random Forest classification
 
-## 🌐 Web Interface
+## Web Interface
 
 The React UI provides:
 - **Search Page**: Classify errors with any of the three methods
@@ -61,7 +61,7 @@ The React UI provides:
 - **Status Page**: System health and metrics (auto-refreshing)
 - **Feedback System**: Thumbs up/down with correction learning
 
-## 📡 REST API
+## REST API
 
 All endpoints available at `/api`:
 
@@ -86,7 +86,7 @@ All endpoints available at `/api`:
 - `GET /api/status` - System health
 - `POST /api/update-kb` - Rebuild vector DB
 
-## 💻 CLI Usage
+## CLI Usage
 
 ### Main Classification System
 
@@ -400,15 +400,3 @@ Vector embeddings and learned feedback are persisted in `models/chroma_db/`:
 - No need to re-index on restart
 - Learned corrections are permanent
 - Can be version controlled or backed up
-
-## 🧪 Testing
-
-```bash
-# Backend tests (when available)
-cd ml
-pytest
-
-# Frontend tests
-cd ui
-npm test
-```
