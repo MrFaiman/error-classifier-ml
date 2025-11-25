@@ -157,7 +157,7 @@ if not is_valid:
 **400 Bad Request** - נתונים חסרים
 
 ## Severity
-🟠 **HIGH** - עלול להשפיע על דיוק תחזיות ולהצביע על תקלת חומרה
+**HIGH** - עלול להשפיע על דיוק תחזיות ולהצביע על תקלת חומרה
 
 ## קטגוריה
 Data Validation Error / Hardware Failure

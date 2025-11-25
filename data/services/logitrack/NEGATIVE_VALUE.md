@@ -1,5 +1,3 @@
-#### 📄 קובץ: `NEGATIVE_VALUE.md`
-```markdown
 # LogiTrack Error: NEGATIVE_VALUE
 
 ## תיאור השגיאה

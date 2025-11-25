@@ -364,7 +364,7 @@ function SearchPage() {
                                                             </Typography>
                                                             {methodResult.is_fallback && (
                                                                 <Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block' }}>
-                                                                    ⚠️ Fallback result
+                                                                    [WARNING] Fallback result
                                                                 </Typography>
                                                             )}
                                                         </Paper>

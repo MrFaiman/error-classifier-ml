@@ -11,7 +11,7 @@ def run_interactive_session(kb=None):
     if kb is None:
         kb = initialize_vector_db()
 
-    print("\n🚀 Vector DB Classifier is Live!")
+    print("\nVector DB Classifier is Live!")
     print("Type an error message to classify it. Type 'exit' to quit.\n")
 
     while True:

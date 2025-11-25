@@ -158,7 +158,7 @@ if not is_valid:
 **400 Bad Request** - נתונים לא עומדים בסכימה
 
 ## Severity
-🟠 **HIGH** - עלול להשפיע על מעקב אחר כלי טיס ולהוביל להחלטות מבצעיות שגויות
+**HIGH** - עלול להשפיע על מעקב אחר כלי טיס ולהוביל להחלטות מבצעיות שגויות
 
 ## קטגוריה
 Data Validation Error / Sensor Anomaly

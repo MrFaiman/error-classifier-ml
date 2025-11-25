@@ -112,8 +112,8 @@ class HybridSearchEngine:
             self.bm25 = BM25Okapi(self.doc_texts)
             
             print(f"Indexed {len(files)} documents into {len(all_documents)} chunks.")
-            print(f"  ✓ Semantic index (FAISS): Ready")
-            print(f"  ✓ Keyword index (BM25): Ready")
+            print(f"  [OK] Semantic index (FAISS): Ready")
+            print(f"  [OK] Keyword index (BM25): Ready")
         else:
             print("[Error] No documents were successfully indexed.")
     
@@ -278,14 +278,14 @@ if __name__ == "__main__":
     print("="*70)
     
     for error_text in test_errors:
-        print(f"\n📝 Error: '{error_text}'")
+        print(f"\nError: '{error_text}'")
         doc_path, confidence = hybrid_engine.find_relevant_doc(error_text)
         
-        print(f"📁 Matched Doc: {doc_path}")
-        print(f"💯 Hybrid Score: {confidence:.2f}%")
+        print(f"Matched Doc: {doc_path}")
+        print(f"Hybrid Score: {confidence:.2f}%")
         
         # Show top relevant chunks with breakdown
-        print(f"\n🔍 Top 3 Relevant Chunks:")
+        print(f"\nTop 3 Relevant Chunks:")
         chunks = hybrid_engine.find_relevant_chunks(error_text, top_k=3)
         for i, chunk in enumerate(chunks, 1):
             print(f"  {i}. [{chunk['service']}] {chunk['filename']}")

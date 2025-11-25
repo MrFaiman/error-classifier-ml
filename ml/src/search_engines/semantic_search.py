@@ -143,14 +143,14 @@ if __name__ == "__main__":
     print("="*70)
     
     for error_text in test_errors:
-        print(f"\n📝 Error: '{error_text}'")
-        doc_path, confidence = search_engine.find_relevant_doc(error_text)
+        print(f"\nError: '{error_text}'")
+        doc_path, confidence = doc_search_engine.find_relevant_doc(error_text)
         
-        print(f"📁 Matched Doc: {doc_path}")
-        print(f"💯 Similarity Score: {confidence:.2f}%")
+        print(f"Matched Doc: {doc_path}")
+        print(f"Similarity Score: {confidence:.2f}%")
         
         # Show top relevant chunks
-        print(f"\n🔍 Top 3 Relevant Chunks:")
+        print(f"\nTop 3 Relevant Chunks:")
         chunks = search_engine.find_relevant_chunks(error_text, top_k=3)
         for i, chunk in enumerate(chunks, 1):
             print(f"  {i}. [{chunk['service']}] {chunk['filename']} (Score: {chunk['score']:.2f}%)")

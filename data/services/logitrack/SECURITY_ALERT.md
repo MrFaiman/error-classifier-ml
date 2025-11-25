@@ -108,7 +108,7 @@ if is_threat:
 **403 Forbidden** - בקשה נחסמה עקב חשד לתוכן זדוני
 
 ## Severity
-🔴 **CRITICAL** - דורש תשומת לב מיידית של צוות האבטחה
+**CRITICAL** - דורש תשומת לב מיידית של צוות האבטחה
 
 ## קטגוריה
 Security Threat / Malicious Input

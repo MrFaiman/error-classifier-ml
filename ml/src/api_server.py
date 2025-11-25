@@ -26,21 +26,21 @@ hybrid_search = None
 
 try:
     vector_kb = initialize_vector_db()
-    print("✓ Vector DB initialized")
+    print("[OK] Vector DB initialized")
 except Exception as e:
-    print(f"✗ Vector DB failed: {e}")
+    print(f"[ERROR] Vector DB failed: {e}")
 
 try:
     semantic_search = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
-    print("✓ Semantic Search initialized")
+    print("[OK] Semantic Search initialized")
 except Exception as e:
-    print(f"✗ Semantic Search failed: {e}")
+    print(f"[ERROR] Semantic Search failed: {e}")
 
 try:
     hybrid_search = HybridSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
-    print("✓ Hybrid Search initialized")
+    print("[OK] Hybrid Search initialized")
 except Exception as e:
-    print(f"✗ Hybrid Search failed: {e}")
+    print(f"[ERROR] Hybrid Search failed: {e}")
 
 
 def verify_and_fallback(doc_path, query_text, method):
@@ -60,8 +60,8 @@ def verify_and_fallback(doc_path, query_text, method):
     if os.path.exists(doc_path):
         return doc_path, None, None, False
     
-    print(f"⚠ Predicted path does not exist: {doc_path}")
-    print(f"🔄 Attempting fallback methods...")
+    print(f"[WARNING] Predicted path does not exist: {doc_path}")
+    print(f"Attempting fallback methods...")
     
     # Try fallback methods in order of preference
     fallback_results = []
@@ -73,26 +73,26 @@ def verify_and_fallback(doc_path, query_text, method):
             fallback_path = result['doc_path']
             if os.path.exists(fallback_path):
                 confidence = parse_confidence(result.get('confidence', 'Unknown'))
-                print(f"✓ Fallback: Vector DB found valid path")
+                print(f"[OK] Fallback: Vector DB found valid path")
                 return fallback_path, confidence, 'VECTOR_DB (Fallback)', True
             fallback_results.append(('VECTOR_DB', fallback_path))
         except Exception as e:
-            print(f"✗ Vector DB fallback failed: {e}")
+            print(f"[ERROR] Vector DB fallback failed: {e}")
     
     # Try Semantic Search if not the original method
     if method != 'SEMANTIC_SEARCH' and semantic_search:
         try:
             fallback_path, confidence = semantic_search.find_relevant_doc(query_text)
             if os.path.exists(fallback_path):
-                print(f"✓ Fallback: Semantic Search found valid path")
+                print(f"[OK] Fallback: Semantic Search found valid path")
                 return fallback_path, float(confidence), 'SEMANTIC_SEARCH (Fallback)', True
             fallback_results.append(('SEMANTIC_SEARCH', fallback_path))
         except Exception as e:
-            print(f"✗ Semantic Search fallback failed: {e}")
+            print(f"[ERROR] Semantic Search fallback failed: {e}")
     
     # If all fallbacks failed, try to find closest existing file
-    print(f"⚠ All fallback methods failed or returned non-existent paths")
-    print(f"🔍 Searching for closest existing documentation file...")
+    print(f"[WARNING] All fallback methods failed or returned non-existent paths")
+    print(f"Searching for closest existing documentation file...")
     
     # Get all available docs
     pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
@@ -108,15 +108,15 @@ def verify_and_fallback(doc_path, query_text, method):
             if len(doc_parts) >= 2 and len(file_parts) >= 2:
                 # Check if service and category match
                 if doc_parts[-2] == file_parts[-2] or doc_parts[-1] == file_parts[-1]:
-                    print(f"✓ Found similar file: {file}")
+                    print(f"[OK] Found similar file: {file}")
                     return file, 50.0, f'{method} (Best Match)', True
         
         # If no similar file found, return the first available doc
-        print(f"✓ Using first available doc as last resort: {available_files[0]}")
+        print(f"[OK] Using first available doc as last resort: {available_files[0]}")
         return available_files[0], 30.0, f'{method} (Fallback - First Available)', True
     
     # Absolute last resort - return the original path with warning
-    print(f"✗ No documentation files found in system")
+    print(f"[ERROR] No documentation files found in system")
     return doc_path, 0.0, f'{method} (File Not Found)', False
 
 

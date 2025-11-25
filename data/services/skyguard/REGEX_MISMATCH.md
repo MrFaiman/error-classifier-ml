@@ -197,7 +197,7 @@ except ValidationError as e:
 **400 Bad Request** - פורמט שדה לא תקין
 
 ## Severity
-🟠 **HIGH** - עלול לגרום לאי-זיהוי נכון של כלי טיס
+**HIGH** - עלול לגרום לאי-זיהוי נכון של כלי טיס
 
 ## קטגוריה
 Format Validation Error / Protocol Mismatch

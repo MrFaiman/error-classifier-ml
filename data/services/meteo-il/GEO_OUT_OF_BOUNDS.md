@@ -136,7 +136,7 @@ except ValueError as e:
 **400 Bad Request** - קואורדינטות לא תקפות
 
 ## Severity
-🟡 **MEDIUM** - עלול להשפיע על דיוק תחזיות אך לא משבית את המערכת
+**MEDIUM** - עלול להשפיע על דיוק תחזיות אך לא משבית את המערכת
 
 ## קטגוריה
 Data Validation Error / Sensor Error
