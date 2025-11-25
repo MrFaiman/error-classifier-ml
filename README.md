@@ -1,15 +1,14 @@
 # Error Classification System
 
-A full-stack ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing. Features three advanced classification methods, a Flask REST API, and a modern React web interface.
-
-![Error Classification System Preview](image.png)
+A full-stack ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing. Features three advanced classification methods with feedback learning, automatic GPU acceleration, a Flask REST API, and a modern React web interface.
 
 ## Architecture
 
-- **Backend**: Python Flask API with ML models (Vector DB, Semantic Search, Random Forest)
+- **Backend**: Python 3.13+ with UV package manager, Flask API with three search engines
 - **Frontend**: React + Vite + Material-UI + TanStack Router/Query
-- **Database**: ChromaDB for persistent vector storage with learning capability
+- **Database**: ChromaDB for persistent vector storage + FAISS for in-memory search
 - **Deployment**: Docker + Docker Compose for easy deployment
+- **GPU Acceleration**: Automatic detection of Apple Silicon (MPS), NVIDIA CUDA, or CPU fallback
 
 ## Quick Start
 
@@ -50,9 +49,11 @@ Frontend runs at http://localhost:3000
 
 The system provides three methods for matching error logs to documentation:
 
-1. **Vector Database with ChromaDB** (Default): Persistent vector store with learned feedback capability
-2. **Semantic Search Engine**: Real-time transformer-based embeddings (Sentence-BERT)
-3. **Traditional ML Pipeline**: TF-IDF vectorization with Random Forest classification
+1. **Vector Database (ChromaDB)**: Persistent vector store with dual collections (official docs + learned feedback)
+2. **Semantic Search (LangChain + FAISS)**: Document chunking with in-memory FAISS vector search for fast semantic similarity
+3. **Hybrid Search (BM25 + Semantic)**: Combines keyword-based BM25 with semantic embeddings using weighted score fusion
+
+All three engines support feedback learning - the system improves accuracy over time as users correct misclassifications.
 
 ## Web Interface
 
@@ -85,7 +86,8 @@ All endpoints available at `/api`:
 - `DELETE /api/dataset/:id` - Delete record
 
 **System**
-- `GET /api/status` - System health
+- `GET /api/status` - System health with correction counts by engine
+- `GET /api/search-engines-comparison` - Detailed comparison of all three search engines
 - `POST /api/update-kb` - Rebuild vector DB
 
 ## CLI Usage
@@ -94,172 +96,140 @@ All endpoints available at `/api`:
 
 ```bash
 cd ml
-python src/main.py
+uv run python src/main.py
 ```
 
 The system will:
-- Train the Random Forest model on historical error data (or load from checkpoint)
-- Save the trained model to `models/checkpoints/`
-- Classify errors from `data/input_examples.json`
-
-To switch between classification methods, edit `main.py`:
-```python
-USE_VECTOR_DB = True   # Use Vector DB with learned feedback
-USE_VECTOR_DB = False  # Use Semantic Search
-```
+- Initialize all three search engines (Vector DB, Semantic Search, Hybrid Search)
+- Automatically detect and use GPU acceleration (Apple Silicon MPS, NVIDIA CUDA, or CPU)
+- Classify errors from `data/input_examples.json` using all methods
+- Display results with confidence scores and processing times
 
 ### Standalone Tools
 
 **Semantic Search:**
 ```bash
-python src/semantic_search.py
+uv run python src/search_engines/semantic_search.py
+```
+
+**Hybrid Search:**
+```bash
+uv run python src/search_engines/hybrid_search.py
 ```
 
 **Vector DB Classifier:**
 ```bash
-python src/vector_db_classifier.py
+uv run python src/search_engines/vector_db_classifier.py
 ```
 
 **Interactive Feedback Session:**
 ```bash
-python src/interactive_feedback.py
+uv run python src/interactive_feedback.py
 ```
 Provides a REPL interface to classify errors and teach the system corrections in real-time.
 
-## Core Functions
+## Core Components
 
-### `build_model()`
+### GPU Acceleration
 
-Creates and returns the complete ML pipeline for error classification.
+The system automatically detects and uses the best available hardware acceleration:
 
-**Architecture:**
-
-The function constructs a scikit-learn Pipeline with two stages:
-
-1. **TF-IDF Vectorization** (`TfidfVectorizer`):
-   - Converts text into numerical features using Term Frequency-Inverse Document Frequency
-   - `ngram_range=(1, 2)`: Captures both individual words (unigrams) and word pairs (bigrams)
-     - Example: "missing field error" → ["missing", "field", "error", "missing field", "field error"]
-   - `analyzer='word'`: Tokenizes at the word level (as opposed to character level)
-   - This creates a sparse matrix where each row represents an error log and columns represent TF-IDF scores for each n-gram
-
-2. **Random Forest Classifier** (`RandomForestClassifier`):
-   - Ensemble learning method that builds multiple decision trees
-   - `n_estimators=100`: Creates 100 decision trees in the forest
-   - `random_state=42`: Sets seed for reproducibility
-   - Each tree votes on the classification, and the majority vote determines the final prediction
-   - Handles high-dimensional TF-IDF features well and provides probability estimates
-
-**Why This Architecture?**
-
-- TF-IDF captures the importance of specific error keywords relative to the entire dataset
-- Bigrams help capture multi-word error patterns like "schema validation" or "missing field"
-- Random Forest is robust to overfitting and works well with sparse text features
-- The pipeline ensures consistent preprocessing during both training and inference
-
-**Returns:** A scikit-learn Pipeline object ready for training with `.fit()` or prediction with `.predict()`
-
-### `classify_error(log_line_dict)`
-
-Performs inference on a single error log entry and returns the predicted documentation path with confidence score.
-
-**Parameters:**
-- `log_line_dict` (dict): A dictionary containing error details with keys:
-  - `Service`: The service name (e.g., "logitrack", "meteo-il", "skyguard")
-  - `Error_Category`: The error type (e.g., "MISSING_FIELD", "SCHEMA_VALIDATION")
-  - `Raw_Input_Snippet`: The actual error message or log snippet
-
-**Process:**
-
-1. **Feature Construction:**
-   ```python
-   input_text = f"{log_line_dict['Service']} {log_line_dict['Error_Category']} {log_line_dict['Raw_Input_Snippet']}"
-   ```
-   Concatenates service, category, and snippet into a single string that matches the training data format (`combined_features`).
-
-2. **Prediction:**
-   ```python
-   prediction = model.predict([input_text])[0]
-   ```
-   - Passes the text through the TF-IDF vectorizer (transforms to numerical features)
-   - Random Forest classifier votes on the most likely documentation path
-   - Returns the predicted file path (e.g., `data/services/meteo-il/MISSING_FIELD.md`)
-
-3. **Confidence Calculation:**
-   ```python
-   probs = model.predict_proba([input_text])
-   confidence = np.max(probs) * 100
-   ```
-   - `predict_proba()` returns probability estimates for all possible classes
-   - Takes the maximum probability (the predicted class's confidence)
-   - Converts to percentage (0-100 scale)
-   - Higher confidence (>80%) indicates strong certainty, lower values suggest ambiguity
-
-**Returns:**
-- `prediction` (str): Path to the predicted documentation file
-- `confidence` (float): Confidence percentage (0-100)
-
-**Example:**
 ```python
-error = {
-    "Service": "meteo-il",
-    "Error_Category": "MISSING_FIELD",
-    "Raw_Input_Snippet": "Required field 'temperature' not found in payload"
-}
-doc_path, conf = classify_error(error)
-# doc_path: "data/services/meteo-il/MISSING_FIELD.md"
-# conf: 92.45
+from device_utils import get_best_device, get_device_info
+
+# Automatically detects: 'mps' (Apple Silicon), 'cuda' (NVIDIA), or 'cpu'
+device = get_best_device()
+
+# Get detailed device information
+info = get_device_info()
+# {'device': 'mps', 'platform': 'Darwin', 'machine': 'arm64', ...}
 ```
+
+**Supported Hardware:**
+- Apple Silicon (M1, M2, M3, M4, M5+) via Metal Performance Shaders (MPS)
+- NVIDIA GPUs via CUDA
+- CPU fallback for systems without GPU
+
+All embedding models automatically use the detected device for optimal performance.
+
+### Feedback Learning System
+
+All three search engines support continuous learning from user corrections:
+
+**Vector DB:** Uses separate ChromaDB collection for learned feedback
+```python
+vector_kb.teach_system(error_text, correct_doc_path)
+```
+
+**Semantic Search:** Uses FAISS feedback store with merge capability
+```python
+semantic_engine.teach_correction(error_message, correct_service, correct_category)
+```
+
+**Hybrid Search:** Uses FAISS feedback store checked before main search
+```python
+hybrid_engine.teach_correction(error_message, correct_service, correct_category)
+```
+
+Learned corrections are checked first (with strict thresholds) before falling back to main search, ensuring the system improves accuracy over time.
 
 ## Semantic Search Engine
 
 ### `DocumentationSearchEngine` Class
 
-Provides transformer-based semantic similarity matching between error logs and documentation files.
+Provides transformer-based semantic similarity matching with document chunking using LangChain and FAISS.
 
 **Initialization:**
 ```python
-search_engine = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
-# Uses default model from constants.py (all-MiniLM-L6-v2)
-
-# Or specify custom model
 search_engine = DocumentationSearchEngine(
-    docs_root_dir=DOCS_ROOT_DIR, 
-    model_name='custom-model'
+    docs_root_dir=DOCS_ROOT_DIR,
+    chunk_size=500,      # Characters per chunk
+    chunk_overlap=50     # Overlap between chunks
 )
 ```
 
 **Parameters:**
 - `docs_root_dir` (str): Root directory containing documentation markdown files
-- `model_name` (str, optional): Sentence-transformers model name (default: from `constants.EMBEDDING_MODEL`)
+- `model_name` (str, optional): Sentence-transformers model (default: from environment or constants)
+- `chunk_size` (int): Characters per chunk (default: 500)
+- `chunk_overlap` (int): Overlap between chunks (default: 50)
 
 **How It Works:**
 
 1. **Indexing Phase** (`_index_documents()`):
    - Scans all `.md` files in the documentation directory
-   - Reads file content and creates combined text (filename + content)
-   - Generates embeddings using Sentence-BERT model
-   - Stores embeddings as tensors for fast similarity computation
+   - Splits documents into chunks using RecursiveCharacterTextSplitter
+   - Adds context (filename, service) to each chunk
+   - Creates FAISS vectorstore with all chunk embeddings
 
 2. **Search Phase** (`find_relevant_doc()`):
-   - Encodes the error snippet into an embedding vector
-   - Computes cosine similarity between query and all document embeddings
-   - Returns the most similar document with confidence score
+   - Checks feedback store first (learned corrections)
+   - Falls back to main FAISS vectorstore
+   - Computes similarity between query and all chunks
+   - Returns the best matching document with confidence score
 
-**Advantages over Traditional ML:**
-- No training data required - works immediately with existing docs
-- Understands semantic meaning, not just keyword matching
-- Adapts automatically when documentation is added/updated
-- Better handles paraphrasing and synonyms
+**Advantages:**
+- Document chunking improves accuracy for long documentation
+- FAISS provides very fast similarity search (< 30ms typical)
+- In-memory operation with no persistence overhead
+- Feedback learning via separate FAISS store
+- GPU acceleration support
 
 **Example:**
 ```python
 search_engine = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
-doc_path, similarity = search_engine.find_relevant_doc(
+doc_path, confidence = search_engine.find_relevant_doc(
     "GPS coordinates out of range: lat=95.0"
 )
 # doc_path: "data/services/meteo-il/GEO_OUT_OF_BOUNDS.md"
-# similarity: 87.34
+# confidence: 87.34
+
+# Teach a correction
+search_engine.teach_correction(
+    "lat value 95 is invalid",
+    "meteo-il",
+    "GEO_OUT_OF_BOUNDS"
+)
 ```
 
 ## Vector Database Classifier
@@ -332,6 +302,72 @@ print(result)
 # {'source': 'LEARNED_MEMORY (Feedback)', 'doc_path': '...', 'confidence': 'High'}
 ```
 
+## Hybrid Search Engine
+
+### `HybridSearchEngine` Class
+
+Combines BM25 keyword-based search with semantic embeddings using weighted score fusion.
+
+**Initialization:**
+```python
+hybrid_engine = HybridSearchEngine(
+    docs_root_dir=DOCS_ROOT_DIR,
+    semantic_weight=0.5,  # Weight for semantic similarity
+    bm25_weight=0.5       # Weight for BM25 keyword scores
+)
+```
+
+**Parameters:**
+- `docs_root_dir` (str): Root directory containing documentation
+- `semantic_weight` (float): Weight for semantic similarity (0-1)
+- `bm25_weight` (float): Weight for BM25 keyword scores (0-1)
+- `chunk_size` (int): Characters per chunk (default: 500)
+- `chunk_overlap` (int): Overlap between chunks (default: 50)
+
+**How It Works:**
+
+1. **Dual Indexing:**
+   - Creates FAISS vectorstore for semantic search
+   - Creates BM25 index for keyword search
+   - Both indexes use the same chunked documents
+
+2. **Hybrid Search Process:**
+   - Checks feedback store first (learned corrections)
+   - Performs semantic search (FAISS) - returns top 10
+   - Performs BM25 keyword search - returns top 10
+   - Normalizes both score sets to 0-1 range
+   - Combines scores: `combined = semantic_weight * semantic + bm25_weight * bm25`
+   - Returns document with highest combined score
+
+**Advantages:**
+- Best of both worlds: semantic understanding + exact keyword matching
+- Excellent for technical terms and acronyms
+- Handles both natural language and code snippets well
+- Feedback learning via FAISS feedback store
+- GPU acceleration for semantic component
+
+**Example:**
+```python
+hybrid_engine = HybridSearchEngine(
+    docs_root_dir=DOCS_ROOT_DIR,
+    semantic_weight=0.5,
+    bm25_weight=0.5
+)
+
+doc_path, confidence = hybrid_engine.find_relevant_doc(
+    "DROP TABLE users -- SQL injection attempt"
+)
+# doc_path: "data/services/logitrack/SECURITY_ALERT.md"
+# confidence: 92.15
+
+# Get top 3 chunks with score breakdown
+chunks = hybrid_engine.find_relevant_chunks(error_text, top_k=3)
+for chunk in chunks:
+    print(f"Combined: {chunk['score']:.2f}%")
+    print(f"Semantic: {chunk['semantic_score']:.2f}%")
+    print(f"BM25: {chunk['bm25_score']:.2f}")
+```
+
 ## Data Format
 
 ### Training Data (`data/dataset/errors_dataset.csv`)
@@ -368,37 +404,67 @@ data/services/
 
 ## Configuration
 
+### Environment Variables
+
+Create `ml/.env` file (see `ml/.env.example`):
+
+```bash
+# API Configuration
+API_PORT=5000
+
+# Model Configuration
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+```
+
+### File Paths
+
 All file paths are automatically detected in `ml/src/constants.py`:
 
 ```python
 # Base directories (auto-detected from file location)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-MODELS_DIR = os.path.join(BASE_DIR, 'models')
-DATA_DIR = os.path.join(BASE_DIR, 'data')
+BASE_DIR = dirname(dirname(dirname(abspath(__file__))))
+ML_DIR = dirname(dirname(abspath(__file__)))  # ml/ directory
+MODELS_DIR = join(ML_DIR, 'models')  # ml/models/
+DATA_DIR = join(BASE_DIR, 'data')    # project/data/
 
 # Model paths
-CHECKPOINT_DIR = os.path.join(MODELS_DIR, 'checkpoints')
-CHROMA_DB_DIR = os.path.join(MODELS_DIR, 'chroma_db')
+CHROMA_DB_DIR = join(MODELS_DIR, 'chroma_db')  # ml/models/chroma_db/
 
 # Data paths
-DOCS_ROOT_DIR = os.path.join(DATA_DIR, 'services')
-DATASET_PATH = os.path.join(DATA_DIR, 'dataset', 'errors_dataset.csv')
-INPUT_EXAMPLES_PATH = os.path.join(DATA_DIR, 'input_examples.json')
+DOCS_ROOT_DIR = join(DATA_DIR, 'services')
+DATASET_PATH = join(DATA_DIR, 'dataset', 'errors_dataset.csv')
 
-# Model configuration
-EMBEDDING_MODEL = 'all-MiniLM-L6-v2'  # Sentence-transformers model
+# Model configuration (from .env or defaults)
+API_PORT = int(getenv('API_PORT', 5000))
+EMBEDDING_MODEL = getenv('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
+
+# Document chunking
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 50
 ```
 
 No manual path configuration needed! Works in Docker and local environments.
 
 ## Storage and Persistence
 
-### Model Checkpoints (Traditional ML)
-Models are automatically saved to `models/checkpoints/` with timestamps and as `latest_model.pkl`. Set `FORCE_RETRAIN = False` to reuse the latest checkpoint.
-
 ### Vector Database (ChromaDB)
-Vector embeddings and learned feedback are persisted in `models/chroma_db/`:
+Vector embeddings and learned feedback are persisted in `ml/models/chroma_db/`:
 - Survives across sessions
 - No need to re-index on restart
 - Learned corrections are permanent
+- Two collections: `official_docs` and `learned_feedback`
 - Can be version controlled or backed up
+
+### In-Memory Stores (FAISS)
+Semantic Search and Hybrid Search use FAISS in-memory vectorstores:
+- Fast initialization and search (< 30ms typical)
+- Feedback corrections stored in separate FAISS stores
+- Re-indexed on restart (fast operation)
+- Lower memory footprint than ChromaDB for small corpora
+
+### Package Management (UV)
+Dependencies managed with UV (Rust-based package manager):
+- Defined in `ml/pyproject.toml`
+- Lock file for reproducible builds
+- Much faster than pip
+- Python 3.13+ required

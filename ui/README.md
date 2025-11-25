@@ -39,11 +39,13 @@ The app will open at `http://localhost:3000`
 
 ## Features
 
-- **Search Page**: Classify errors using Vector DB, Semantic Search, or Random Forest methods
+- **Search Page**: Classify errors using Vector DB, Semantic Search, or Hybrid Search (BM25 + Semantic)
+- **Multi-Engine Search**: Aggregate results from all three engines with consensus voting
+- **Engine Comparison**: Collapsible panel showing detailed comparison of all search engines with feature matrix
 - **Manage Docs**: CRUD operations for documentation files with file preview
 - **Manage Dataset**: Add, edit, and delete training data records
-- **Status Page**: View system health and statistics (auto-refreshing every 5 seconds)
-- **Feedback System**: Thumbs up/down with correction learning capability
+- **Status Page**: View system health and statistics with per-engine correction counts (auto-refreshing every 5 seconds)
+- **Feedback System**: Thumbs up/down with correction learning for all three engines
 
 ## Architecture
 
@@ -83,7 +85,8 @@ The React app communicates with the Flask API server at `http://localhost:5000`:
 
 **System**
 - `POST /api/update-kb` - Update knowledge base
-- `GET /api/status` - Get system status
+- `GET /api/status` - Get system status with correction counts by engine
+- `GET /api/search-engines-comparison` - Get detailed comparison of all three search engines
 
 ## Build for Production
 
