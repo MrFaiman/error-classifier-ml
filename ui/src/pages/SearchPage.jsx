@@ -159,6 +159,7 @@ function SearchPage() {
                                 >
                                     <MenuItem value="VECTOR_DB">Vector Database (with Learning)</MenuItem>
                                     <MenuItem value="SEMANTIC_SEARCH">Semantic Search (with Chunking)</MenuItem>
+                                    <MenuItem value="HYBRID_SEARCH">Hybrid Search (BM25 + Semantic)</MenuItem>
                                 </Select>
                             </FormControl>
                         </Grid>

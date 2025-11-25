@@ -106,6 +106,15 @@ function StatusPage() {
                                                 <SearchIcon color="primary" />
                                             </ListItemIcon>
                                             <ListItemText 
+                                                primary="Hybrid Search (BM25 + Semantic)"
+                                                secondary="Combines keyword-based BM25 with semantic embeddings for better accuracy"
+                                            />
+                                        </ListItem>
+                                        <ListItem>
+                                            <ListItemIcon>
+                                                <SearchIcon color="primary" />
+                                            </ListItemIcon>
+                                            <ListItemText 
                                                 primary="Message-Only Classification"
                                                 secondary="No service or category input required"
                                             />
@@ -124,6 +133,7 @@ function StatusPage() {
                                             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                                                 <Chip label="Vector Database" color="primary" size="small" />
                                                 <Chip label="Semantic Search" color="primary" size="small" />
+                                                <Chip label="Hybrid Search" color="primary" size="small" />
                                             </Box>
                                         </Box>
                                     </Grid>
