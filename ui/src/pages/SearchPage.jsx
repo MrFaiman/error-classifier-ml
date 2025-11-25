@@ -40,7 +40,7 @@ import SearchInput from '../components/SearchInput';
 
 function SearchPage() {
     const [errorInput, setErrorInput] = useState('');
-    const [method, setMethod] = useState('VECTOR_DB');
+    const [method, setMethod] = useState('CUSTOM_TFIDF');
     const [multiSearch, setMultiSearch] = useState(true); // Auto-enabled by default
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);

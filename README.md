@@ -1,14 +1,14 @@
 # Error Classification System
 
-A full-stack ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using Natural Language Processing. Features three advanced classification methods with feedback learning, automatic GPU acceleration, a Flask REST API, and a modern React web interface.
+A full-stack ML-based system that automatically classifies error logs and maps them to their corresponding documentation files using **100% Custom ML Implementations** (No Blackbox Libraries). Features custom TF-IDF, K-Means clustering, Edit Distance algorithms, a Flask REST API, and a modern React web interface.
 
 ## Architecture
 
-- **Backend**: Python 3.13+ with UV package manager, Flask API with three search engines
+- **Backend**: Python 3.13+ with UV package manager, Flask API with custom search engines
 - **Frontend**: React + Vite + Material-UI + TanStack Router/Query
-- **Database**: ChromaDB for persistent vector storage + FAISS for in-memory search
+- **ML Stack**: 100% Custom implementations - TF-IDF, Cosine Similarity, K-Means, Edit Distance, Text Chunking
 - **Deployment**: Docker + Docker Compose for easy deployment
-- **GPU Acceleration**: Automatic detection of Apple Silicon (MPS), NVIDIA CUDA, or CPU fallback
+- **No Blackbox**: Complete algorithmic transparency - all ML from scratch
 
 ## Quick Start
 
@@ -47,18 +47,24 @@ Frontend runs at http://localhost:3000
 
 ## Classification Methods
 
-The system provides three methods for matching error logs to documentation:
+The system provides two custom ML search engines:
 
-1. **Vector Database (ChromaDB)**: Persistent vector store with dual collections (official docs + learned feedback)
-2. **Semantic Search (LangChain + FAISS)**: Document chunking with in-memory FAISS vector search for fast semantic similarity
-3. **Hybrid Search (BM25 + Semantic)**: Combines keyword-based BM25 with semantic embeddings using weighted score fusion
+1. **Custom TF-IDF Search**: Pure TF-IDF vectorization with cosine similarity (100% custom implementation)
+2. **Enhanced Custom Search**: Combines ALL custom ML algorithms:
+   - TF-IDF Vectorization
+   - Cosine Similarity
+   - K-Means Clustering (k-means++ initialization)
+   - Levenshtein Edit Distance (fuzzy matching for typos)
+   - Custom Text Chunking (intelligent document splitting)
 
-All three engines support feedback learning - the system improves accuracy over time as users correct misclassifications.
+Both engines support feedback learning - the system improves accuracy over time as users correct misclassifications.
+
+**No Blackbox Guarantee**: All algorithms implemented from mathematical foundations without scikit-learn, sentence-transformers, chromadb, langchain, or any other ML library.
 
 ## Web Interface
 
 The React UI provides:
-- **Search Page**: Classify errors with any of the three methods
+- **Search Page**: Classify errors with custom ML methods or multi-search aggregation
 - **Manage Docs**: CRUD operations for documentation files
 - **Manage Dataset**: Edit training data records
 - **Status Page**: System health and metrics (auto-refreshing)

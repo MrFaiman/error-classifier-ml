@@ -35,10 +35,8 @@ function SearchInput({
                         label="Classification Method"
                         onChange={(e) => onMethodChange(e.target.value)}
                     >
-                        <MenuItem value="VECTOR_DB">Vector Database (with Learning)</MenuItem>
-                        <MenuItem value="SEMANTIC_SEARCH">Semantic Search (with Chunking)</MenuItem>
-                        <MenuItem value="HYBRID_SEARCH">Hybrid Search (BM25 + Semantic)</MenuItem>
                         <MenuItem value="CUSTOM_TFIDF">Custom TF-IDF (No Blackbox)</MenuItem>
+                        <MenuItem value="ENHANCED_CUSTOM">Enhanced Custom (All ML Algorithms)</MenuItem>
                     </Select>
                 </FormControl>
             </Grid>

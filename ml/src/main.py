@@ -2,12 +2,12 @@ import pandas as pd
 import numpy as np
 import os
 import json
-import joblib
 from datetime import datetime
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.pipeline import Pipeline
 from constants import CHECKPOINT_DIR, DOCS_ROOT_DIR, DATASET_PATH, INPUT_EXAMPLES_PATH
+
+# Use custom ML implementations
+from custom_ml import TfidfVectorizer
+from search_engines import CustomTfidfSearchEngine, EnhancedCustomSearchEngine
 
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
@@ -52,86 +52,99 @@ def load_and_prep_data(csv_path):
     return df
 
 def build_model():
-    text_clf = Pipeline([
-        ('tfidf', TfidfVectorizer(ngram_range=(1, 2), analyzer='word')), 
-        ('clf', RandomForestClassifier(n_estimators=100, random_state=42)),
-    ])
-    return text_clf
+    """
+    Build a custom TF-IDF based classifier
+    Note: This is now replaced by CustomTfidfSearchEngine for actual classification
+    This function is kept for backward compatibility
+    """
+    print("[INFO] Using CustomTfidfSearchEngine - No blackbox ML libraries!")
+    return None
 
 def save_checkpoint(model):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"model_v1_{timestamp}.pkl"
-    filepath = os.path.join(CHECKPOINT_DIR, filename)
-    
-    joblib.dump(model, filepath)
-    print(f"\n[Checkpoint] Model saved successfully to: {filepath}")
-    
-    latest_path = os.path.join(CHECKPOINT_DIR, "latest_model.pkl")
-    joblib.dump(model, latest_path)
+    """
+    Checkpointing is no longer needed with custom search engines
+    They automatically index documents on initialization
+    """
+    print("[INFO] Custom search engines don't require checkpointing - they index on startup")
+    pass
 
 def load_latest_checkpoint():
-    latest_path = os.path.join(CHECKPOINT_DIR, "latest_model.pkl")
-    if os.path.exists(latest_path):
-        print(f"\n[Checkpoint] Loading latest model from: {latest_path}")
-        return joblib.load(latest_path)
+    """
+    No longer needed - custom search engines initialize directly
+    """
+    return None
+
+FORCE_RETRAIN = False  # No longer relevant with custom search engines
+
+# Initialize custom search engines
+print("\n=== Initializing Custom ML Search Engines ===")
+print("100% Custom Implementation - No Blackbox Libraries!")
+
+custom_tfidf = None
+enhanced_custom = None
+
+try:
+    custom_tfidf = CustomTfidfSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
+    print("[OK] Custom TF-IDF initialized")
+except Exception as e:
+    print(f"[ERROR] Custom TF-IDF failed: {e}")
+
+try:
+    enhanced_custom = EnhancedCustomSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
+    print("[OK] Enhanced Custom Search initialized")
+except Exception as e:
+    print(f"[ERROR] Enhanced Custom Search failed: {e}")
+
+def classify_error(error_message, use_enhanced=False):
+    """
+    Classify an error using custom ML implementations
+    
+    Args:
+        error_message: The error text to classify
+        use_enhanced: If True, use Enhanced Custom (all algorithms), else use Custom TF-IDF
+    
+    Returns:
+        (doc_path, confidence)
+    """
+    if use_enhanced and enhanced_custom:
+        return enhanced_custom.find_relevant_doc(error_message)
+    elif custom_tfidf:
+        return custom_tfidf.find_relevant_doc(error_message)
     else:
-        return None
-
-FORCE_RETRAIN = True 
-
-model = None
-
-if not FORCE_RETRAIN:
-    model = load_latest_checkpoint()
-
-if model is None:
-    print("Starting Training Session...")
-    df = load_and_prep_data(DATASET_PATH)
-    model = build_model()
-    model.fit(df['combined_features'], df['target_doc'])
-    print("Training Complete.")
-    
-    save_checkpoint(model)
-
-def classify_error(error_message):
-    prediction = model.predict([error_message])[0]
-    probs = model.predict_proba([error_message])
-    confidence = np.max(probs) * 100
-    
-    return prediction, confidence
+        raise RuntimeError("No search engine available")
 
 if os.path.exists(INPUT_EXAMPLES_PATH):
     with open(INPUT_EXAMPLES_PATH, 'r', encoding='utf-8') as f:
         new_errors = json.load(f)
 
-    # Choose classification method
-    USE_VECTOR_DB = True  # Set to False to use semantic search or traditional ML
+    # Test both custom search engines
+    print("\n=== Testing Custom Search Engines ===\n")
     
-    if USE_VECTOR_DB:
-        from search_engines import initialize_vector_db
-        vector_kb = initialize_vector_db()
-        
-        print("\n--- Running Inference (Vector DB) ---")
+    # Test Custom TF-IDF
+    if custom_tfidf:
+        print("--- Custom TF-IDF Results ---")
         for new_error in new_errors:
-            result = vector_kb.search(new_error['Raw_Input_Snippet'])
-            
-            print(f"Input Snippet: {new_error['Raw_Input_Snippet']}")
-            print(f"AI Classification: {result['doc_path']}")
-            print(f"Source: {result['source']}")
-            if 'confidence' in result:
-                print(f"Confidence Level: {result['confidence']}")
-            print("-" * 30)
-    else:
-        from search_engines import DocumentationSearchEngine
-        doc_search_engine = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
-
-        print("\n--- Running Inference (Semantic Search) ---")
+            try:
+                doc_path, confidence = custom_tfidf.find_relevant_doc(new_error['Raw_Input_Snippet'])
+                print(f"Input: {new_error['Raw_Input_Snippet']}")
+                print(f"Classification: {doc_path}")
+                print(f"Confidence: {confidence:.2f}%")
+                print("-" * 50)
+            except Exception as e:
+                print(f"Error classifying: {e}")
+    
+    # Test Enhanced Custom
+    if enhanced_custom:
+        print("\n--- Enhanced Custom Search Results ---")
         for new_error in new_errors:
-            doc_path, conf = doc_search_engine.find_relevant_doc(new_error['Raw_Input_Snippet'])
-
-            print(f"Input Snippet: {new_error['Raw_Input_Snippet']}")
-            print(f"AI Classification: {doc_path}")
-            print(f"Confidence Level: {conf:.2f}%")
-            print("-" * 30)
+            try:
+                doc_path, confidence = enhanced_custom.find_relevant_doc(new_error['Raw_Input_Snippet'])
+                print(f"Input: {new_error['Raw_Input_Snippet']}")
+                print(f"Classification: {doc_path}")
+                print(f"Confidence: {confidence:.2f}%")
+                print("-" * 50)
+            except Exception as e:
+                print(f"Error classifying: {e}")
 else:
-    print(f"No {INPUT_EXAMPLES_PATH} found to test.")
+    print(f"\nNo {INPUT_EXAMPLES_PATH} found to test.")
+    print("Custom search engines are ready for API use.")

@@ -1,17 +1,13 @@
 """
 Search Engines Module
-Contains all classification/search methods for error documentation matching
+Contains all custom classification/search methods for error documentation matching
+100% Custom ML Implementations - No Blackbox Libraries
 """
 
-from .vector_db_classifier import VectorKnowledgeBase, initialize_vector_db
-from .semantic_search import DocumentationSearchEngine
-from .hybrid_search import HybridSearchEngine
 from .custom_tfidf_search import CustomTfidfSearchEngine
+from .enhanced_custom_search import EnhancedCustomSearchEngine
 
 __all__ = [
-    'VectorKnowledgeBase',
-    'initialize_vector_db',
-    'DocumentationSearchEngine',
-    'HybridSearchEngine',
     'CustomTfidfSearchEngine',
+    'EnhancedCustomSearchEngine',
 ]

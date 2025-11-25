@@ -1,24 +1,13 @@
 [project]
 name = "error-classifier-ml"
 version = "0.1.0"
-description = "ML-powered error classification system with vector database and semantic search"
+description = "ML-powered error classification system with custom implementations (no blackbox libraries)"
 requires-python = ">=3.13"
 dependencies = [
     "pandas",
     "numpy",
-    "scikit-learn",
-    "joblib",
-    "sentence-transformers",
-    "torch",
-    "chromadb",
-    "pydantic-settings",
     "flask",
     "flask-cors",
-    "langchain",
-    "langchain-community",
-    "langchain-huggingface",
-    "faiss-cpu",
-    "rank-bm25",
 ]
 
 [dependency-groups]
