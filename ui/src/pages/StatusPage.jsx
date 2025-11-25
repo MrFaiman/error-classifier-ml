@@ -11,11 +11,18 @@ import {
     Alert,
     LinearProgress,
     Divider,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import StorageIcon from '@mui/icons-material/Storage';
 import SchoolIcon from '@mui/icons-material/School';
+import SearchIcon from '@mui/icons-material/Search';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import DescriptionIcon from '@mui/icons-material/Description';
 import { useQuery } from '@tanstack/react-query';
 import { getStatus } from '../services/api';
 
@@ -69,13 +76,55 @@ function StatusPage() {
                                     </Box>
                                 </Box>
                                 <Divider sx={{ my: 2 }} />
+                                
+                                {/* Active Features */}
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="h6" gutterBottom>
+                                        Active Features
+                                    </Typography>
+                                    <List dense>
+                                        <ListItem>
+                                            <ListItemIcon>
+                                                <AutoAwesomeIcon color="primary" />
+                                            </ListItemIcon>
+                                            <ListItemText 
+                                                primary="Multi-Engine Search"
+                                                secondary="Aggregates results from Vector DB and Semantic Search"
+                                            />
+                                        </ListItem>
+                                        <ListItem>
+                                            <ListItemIcon>
+                                                <DescriptionIcon color="primary" />
+                                            </ListItemIcon>
+                                            <ListItemText 
+                                                primary="LangChain Document Chunking"
+                                                secondary="500-char chunks with 50-char overlap for better vectorization"
+                                            />
+                                        </ListItem>
+                                        <ListItem>
+                                            <ListItemIcon>
+                                                <SearchIcon color="primary" />
+                                            </ListItemIcon>
+                                            <ListItemText 
+                                                primary="Message-Only Classification"
+                                                secondary="No service or category input required"
+                                            />
+                                        </ListItem>
+                                    </List>
+                                </Box>
+
+                                <Divider sx={{ my: 2 }} />
+                                
                                 <Grid container spacing={3}>
                                     <Grid item xs={12} md={6}>
                                         <Box sx={{ mb: 2 }}>
                                             <Typography variant="body2" color="text.secondary" gutterBottom>
-                                                Model Status
+                                                Classification Methods
                                             </Typography>
-                                            <Typography variant="body1">{status.model_status}</Typography>
+                                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                                <Chip label="Vector Database" color="primary" size="small" />
+                                                <Chip label="Semantic Search" color="primary" size="small" />
+                                            </Box>
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12} md={6}>
@@ -101,6 +150,9 @@ function StatusPage() {
                                             <StorageIcon color="primary" sx={{ mr: 1 }} />
                                             <Typography variant="h6">Vector Database</Typography>
                                         </Box>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                            ChromaDB with dual collections for training data and user feedback
+                                        </Typography>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                             <Typography variant="body2" color="text.secondary">
                                                 Total Records
@@ -118,6 +170,9 @@ function StatusPage() {
                                             <SchoolIcon color="secondary" sx={{ mr: 1 }} />
                                             <Typography variant="h6">Learned Knowledge</Typography>
                                         </Box>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                            System learns from user corrections via feedback collection
+                                        </Typography>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                             <Typography variant="body2" color="text.secondary">
                                                 User Corrections
