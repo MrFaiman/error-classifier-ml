@@ -1,20 +1,3 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
-venv/
-env/
-ENV/
-
-# Models and data
-models/checkpoints/*.pkl
-models/chroma_db/
-
 # IDE
 .vscode/
 .idea/
@@ -37,12 +20,6 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
-
-# Node (Frontend)
-ui/node_modules/
-ui/build/
-ui/dist/
-ui/.vite/
 
 # Docker
 .dockerignore

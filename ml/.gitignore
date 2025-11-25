@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# UV Package Manager
+.uv/
+uv.lock
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Environment Variables
+.env
+.env.local
+
+# Models & Data
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+*.onnx
+*.pb
+
+# ChromaDB
+chroma_db/
+*.chromadb/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.cache/
+
+# Models and data
+models/checkpoints/*.pkl
+models/chroma_db/

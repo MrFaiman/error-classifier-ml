@@ -2,7 +2,8 @@ import os
 
 # Base directories
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-MODELS_DIR = os.path.join(BASE_DIR, 'models')
+ML_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODELS_DIR = os.path.join(ML_DIR, 'models')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 
 # Model paths
