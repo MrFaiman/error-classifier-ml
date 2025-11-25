@@ -1,12 +1,15 @@
 import os
 import glob
 import numpy as np
+import pandas as pd
+import uuid
 from rank_bm25 import BM25Okapi
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from constants import EMBEDDING_MODEL, DOCS_ROOT_DIR, CHUNK_SIZE, CHUNK_OVERLAP
+from device_utils import get_best_device
 
 
 class HybridSearchEngine:
@@ -35,10 +38,11 @@ class HybridSearchEngine:
         print(f"  - BM25 Weight: {bm25_weight}")
         
         # Initialize embeddings for semantic search
-        print(f"Loading Embedding Model ({model_name})...")
+        device = get_best_device()
+        print(f"Loading Embedding Model ({model_name}) on {device.upper()}...")
         self.embeddings = HuggingFaceEmbeddings(
             model_name=model_name,
-            model_kwargs={'device': 'cpu'},
+            model_kwargs={'device': device},
             encode_kwargs={'normalize_embeddings': True}
         )
         
@@ -56,7 +60,12 @@ class HybridSearchEngine:
         self.documents = []  # Store documents for BM25
         self.doc_texts = []  # Store tokenized texts for BM25
         
+        # Feedback/correction storage
+        self.feedback_store = None  # FAISS vectorstore for user corrections
+        self.feedback_corrections = {}  # Dictionary mapping correction_id to correction data
+        
         self._index_documents()
+        self._init_feedback_store()
     
     def _index_documents(self):
         print("Indexing documentation files with hybrid search...")
@@ -117,6 +126,56 @@ class HybridSearchEngine:
         else:
             print("[Error] No documents were successfully indexed.")
     
+    def _init_feedback_store(self):
+        """Initialize an empty FAISS vectorstore for feedback corrections"""
+        # Create a dummy document to initialize FAISS
+        dummy_doc = Document(
+            page_content="Initialization placeholder",
+            metadata={'type': 'init'}
+        )
+        self.feedback_store = FAISS.from_documents([dummy_doc], self.embeddings)
+        print("  [OK] Feedback store initialized (Hybrid Search)")
+    
+    def teach_correction(self, error_message, correct_service, correct_category, incorrect_result=None):
+        """
+        Teach the hybrid search system a correction by adding the error message
+        to the feedback store with the correct classification.
+        
+        Args:
+            error_message: The error message that was misclassified
+            correct_service: The correct service name
+            correct_category: The correct error category
+            incorrect_result: The incorrect classification (optional, for logging)
+        """
+        correction_id = str(uuid.uuid4())
+        
+        # Store correction metadata
+        self.feedback_corrections[correction_id] = {
+            'error_message': error_message,
+            'correct_service': correct_service,
+            'correct_category': correct_category,
+            'incorrect_result': incorrect_result,
+            'timestamp': pd.Timestamp.now().isoformat()
+        }
+        
+        # Create a document for this correction
+        correction_doc = Document(
+            page_content=f"Error: {error_message}\nService: {correct_service}\nCategory: {correct_category}",
+            metadata={
+                'correction_id': correction_id,
+                'service': correct_service,
+                'category': correct_category,
+                'type': 'correction'
+            }
+        )
+        
+        # Add to feedback store
+        new_store = FAISS.from_documents([correction_doc], self.embeddings)
+        self.feedback_store.merge_from(new_store)
+        
+        print(f"[Hybrid Search] Learned correction: {error_message[:50]}... -> {correct_service}/{correct_category}")
+        return correction_id
+    
     def _normalize_scores(self, scores):
         """Normalize scores to 0-1 range using min-max normalization"""
         if len(scores) == 0:
@@ -132,6 +191,30 @@ class HybridSearchEngine:
         """Find most relevant document using hybrid search"""
         if self.vectorstore is None or self.bm25 is None:
             return "No docs indexed", 0.0
+        
+        # Check feedback store first
+        if self.feedback_store is not None:
+            try:
+                feedback_results = self.feedback_store.similarity_search_with_score(error_snippet, k=1)
+                if feedback_results:
+                    doc, distance = feedback_results[0]
+                    # Use strict threshold for high-confidence corrections
+                    if distance < 0.3 and doc.metadata.get('type') == 'correction':
+                        service = doc.metadata.get('service', 'Unknown')
+                        category = doc.metadata.get('category', 'Unknown')
+                        confidence = max(0, (1 - distance / 2) * 100)
+                        
+                        # Find the actual doc file for this service/category
+                        for original_doc in self.documents:
+                            doc_service = original_doc.metadata.get('service', '').lower()
+                            doc_filename = original_doc.metadata.get('filename', '').replace('.md', '').replace('_', ' ').lower()
+                            
+                            if (service.lower() == doc_service and 
+                                category.lower().replace('_', ' ') in doc_filename):
+                                print(f"[Hybrid Search] Using learned correction: {confidence:.2f}%")
+                                return original_doc.metadata.get('source', 'Unknown'), confidence
+            except Exception as e:
+                print(f"[Warning] Feedback lookup failed: {e}")
         
         # 1. Semantic search with FAISS
         semantic_results = self.vectorstore.similarity_search_with_score(error_snippet, k=10)

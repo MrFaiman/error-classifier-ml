@@ -1,12 +1,15 @@
 import os
 import glob
 import numpy as np
+import pandas as pd
+import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from constants import EMBEDDING_MODEL, DOCS_ROOT_DIR, CHUNK_SIZE, CHUNK_OVERLAP
+from device_utils import get_best_device
 
 class DocumentationSearchEngine:
     def __init__(self, docs_root_dir=None, model_name=None, chunk_size=None, chunk_overlap=None):
@@ -20,10 +23,11 @@ class DocumentationSearchEngine:
         if chunk_overlap is None:
             chunk_overlap = CHUNK_OVERLAP
         
-        print(f"Loading Embedding Model ({model_name})...")
+        device = get_best_device()
+        print(f"Loading Embedding Model ({model_name}) on {device.upper()}...")
         self.embeddings = HuggingFaceEmbeddings(
             model_name=model_name,
-            model_kwargs={'device': 'cpu'},
+            model_kwargs={'device': device},
             encode_kwargs={'normalize_embeddings': True}
         )
         
@@ -36,9 +40,12 @@ class DocumentationSearchEngine:
         )
         
         self.vectorstore = None
+        self.feedback_store = None  # Separate store for user corrections
+        self.feedback_corrections = {}  # Map error text to correct doc path
         self.doc_chunks = []
         
         self._index_documents()
+        self._init_feedback_store()
 
     def _index_documents(self):
         print("Indexing documentation files with chunking...")
@@ -88,12 +95,34 @@ class DocumentationSearchEngine:
             print(f"Indexed {len(files)} documents into {len(all_documents)} chunks successfully.")
         else:
             print("[Error] No documents were successfully indexed.")
+    
+    def _init_feedback_store(self):
+        """Initialize empty feedback store for user corrections"""
+        self.feedback_corrections = {}
+        print("Feedback system initialized for Semantic Search")
 
     def find_relevant_doc(self, error_snippet, top_k=1):
         if self.vectorstore is None:
             return "No docs indexed", 0.0
+        
+        # Step 1: Check feedback corrections first
+        if self.feedback_store is not None:
+            try:
+                feedback_results = self.feedback_store.similarity_search_with_score(error_snippet, k=1)
+                if feedback_results:
+                    feedback_doc, feedback_score = feedback_results[0]
+                    # Use stricter threshold for feedback (0.3)
+                    if feedback_score < 0.3:
+                        feedback_path = feedback_doc.metadata.get('correct_doc_path', '')
+                        if feedback_path:
+                            similarity_percentage = max(0, (1 - feedback_score / 2) * 100)
+                            print(f"[Semantic Search] Using learned correction (score: {similarity_percentage:.2f}%)")
+                            return feedback_path, similarity_percentage
+            except Exception as e:
+                # Feedback store might be empty or not initialized
+                pass
 
-        # Perform similarity search
+        # Step 2: Perform standard similarity search
         results = self.vectorstore.similarity_search_with_score(error_snippet, k=top_k)
         
         if not results:
@@ -108,6 +137,36 @@ class DocumentationSearchEngine:
         similarity_percentage = max(0, (1 - best_score / 2) * 100)
         
         return best_doc_path, similarity_percentage
+    
+    def teach_correction(self, error_text, correct_doc_path):
+        """Learn from user correction"""
+        correction_id = f"correction_{uuid.uuid4().hex[:8]}"
+        
+        print(f"[Semantic Search] Learning correction...")
+        
+        # Create a document for the feedback
+        feedback_doc = Document(
+            page_content=error_text,
+            metadata={
+                'correct_doc_path': correct_doc_path,
+                'added_by': 'user',
+                'timestamp': pd.Timestamp.now().isoformat(),
+                'correction_id': correction_id
+            }
+        )
+        
+        # Add to feedback store
+        if self.feedback_store is None:
+            self.feedback_store = FAISS.from_documents([feedback_doc], self.embeddings)
+        else:
+            # Add to existing store
+            temp_store = FAISS.from_documents([feedback_doc], self.embeddings)
+            self.feedback_store.merge_from(temp_store)
+        
+        # Also store in simple dict for quick lookup
+        self.feedback_corrections[error_text] = correct_doc_path
+        
+        print(f"[Semantic Search] Correction learned: {correct_doc_path}")
     
     def find_relevant_chunks(self, error_snippet, top_k=3):
         """Find the most relevant document chunks for an error snippet"""
