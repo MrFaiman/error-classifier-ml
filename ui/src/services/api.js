@@ -75,3 +75,8 @@ export const getStatus = async () => {
     const response = await api.get('/status');
     return response.data;
 };
+
+export const getSearchEnginesComparison = async () => {
+    const response = await api.get('/search-engines-comparison');
+    return response.data;
+};

@@ -35,7 +35,8 @@ import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DescriptionIcon from '@mui/icons-material/Description';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { classifyError, teachCorrection, getDocContent } from '../services/api';
+import { classifyError, teachCorrection, getDocContent, getSearchEnginesComparison } from '../services/api';
+import SearchInput from '../components/SearchInput';
 
 function SearchPage() {
     const [errorInput, setErrorInput] = useState('');
@@ -47,6 +48,14 @@ function SearchPage() {
     const [openCorrectionDialog, setOpenCorrectionDialog] = useState(false);
     const [correctPath, setCorrectPath] = useState('');
     const [feedbackSuccess, setFeedbackSuccess] = useState(null);
+    const [showComparison, setShowComparison] = useState(false);
+
+    // Query for search engines comparison
+    const { data: comparisonData } = useQuery({
+        queryKey: ['searchEnginesComparison'],
+        queryFn: getSearchEnginesComparison,
+        staleTime: Infinity, // This data doesn't change often
+    });
 
     // Mutation for classification
     const classifyMutation = useMutation({
@@ -113,9 +122,18 @@ function SearchPage() {
             return;
         }
 
+        // Determine which engine to teach based on classification method used
+        let engine = method;
+        if (method === 'MULTI_SEARCH') {
+            // For multi-search, teach all engines
+            // Start with the primary result's method if available
+            engine = result?.method || 'VECTOR_DB';
+        }
+
         teachMutation.mutate({
             error_text: errorInput,
             correct_doc_path: correctPath,
+            engine: engine,
         });
     };
 
@@ -148,70 +166,163 @@ function SearchPage() {
                 </Typography>
 
                 <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} sm={8}>
-                            <FormControl fullWidth disabled={multiSearch}>
-                                <InputLabel>Classification Method</InputLabel>
-                                <Select
-                                    value={method}
-                                    label="Classification Method"
-                                    onChange={(e) => setMethod(e.target.value)}
-                                >
-                                    <MenuItem value="VECTOR_DB">Vector Database (with Learning)</MenuItem>
-                                    <MenuItem value="SEMANTIC_SEARCH">Semantic Search (with Chunking)</MenuItem>
-                                    <MenuItem value="HYBRID_SEARCH">Hybrid Search (BM25 + Semantic)</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
+                    <SearchInput
+                        errorInput={errorInput}
+                        onErrorInputChange={setErrorInput}
+                        method={method}
+                        onMethodChange={setMethod}
+                        multiSearch={multiSearch}
+                        onMultiSearchChange={setMultiSearch}
+                        onSearch={handleSearch}
+                        isSearching={classifyMutation.isPending}
+                    />
+                </Paper>
 
-                        <Grid item xs={12} sm={4}>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={multiSearch}
-                                        onChange={(e) => setMultiSearch(e.target.checked)}
-                                        color="primary"
-                                    />
-                                }
-                                label={
-                                    <Box>
-                                        <Typography variant="body2" fontWeight="medium">
-                                            Multi-Engine Search
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Aggregate all methods
-                                        </Typography>
+                {/* Search Engines Comparison Section */}
+                <Paper elevation={2} sx={{ p: 3, mb: 4, bgcolor: 'background.default' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6" color="primary">
+                            Search Engine Comparison
+                        </Typography>
+                        <Button
+                            size="small"
+                            onClick={() => setShowComparison(!showComparison)}
+                            endIcon={<ExpandMoreIcon sx={{ transform: showComparison ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />}
+                        >
+                            {showComparison ? 'Hide' : 'Show'} Details
+                        </Button>
+                    </Box>
+
+                    {showComparison && comparisonData && (
+                        <Box>
+                            <Grid container spacing={2} sx={{ mb: 3 }}>
+                                {comparisonData.engines.map((engine) => (
+                                    <Grid item xs={12} md={4} key={engine.id}>
+                                        <Card variant="outlined" sx={{ height: '100%' }}>
+                                            <CardContent>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                                    <Typography variant="h6" component="div" gutterBottom>
+                                                        {engine.name}
+                                                    </Typography>
+                                                    <Chip
+                                                        label={engine.available ? 'Available' : 'Unavailable'}
+                                                        color={engine.available ? 'success' : 'default'}
+                                                        size="small"
+                                                    />
+                                                </Box>
+                                                
+                                                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                                                    {engine.technology}
+                                                </Typography>
+
+                                                <Typography variant="body2" sx={{ mb: 2 }}>
+                                                    {engine.description}
+                                                </Typography>
+
+                                                <Divider sx={{ my: 1.5 }} />
+
+                                                <Typography variant="subtitle2" color="primary" gutterBottom>
+                                                    Strengths:
+                                                </Typography>
+                                                <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 1.5 }}>
+                                                    {engine.strengths.map((strength, idx) => (
+                                                        <Typography component="li" variant="caption" key={idx} sx={{ mb: 0.5 }}>
+                                                            {strength}
+                                                        </Typography>
+                                                    ))}
+                                                </Box>
+
+                                                <Typography variant="subtitle2" color="warning.main" gutterBottom>
+                                                    Best For:
+                                                </Typography>
+                                                <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 0 }}>
+                                                    {engine.best_for.map((use, idx) => (
+                                                        <Typography component="li" variant="caption" key={idx} sx={{ mb: 0.5 }}>
+                                                            {use}
+                                                        </Typography>
+                                                    ))}
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                ))}
+                            </Grid>
+
+                            <Divider sx={{ my: 3 }} />
+
+                            <Typography variant="h6" gutterBottom>
+                                Feature Comparison Matrix
+                            </Typography>
+                            <Box sx={{ overflowX: 'auto' }}>
+                                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mt: 2 }}>
+                                    <Box component="thead">
+                                        <Box component="tr">
+                                            {comparisonData.comparison_matrix.headers.map((header, idx) => (
+                                                <Box
+                                                    component="th"
+                                                    key={idx}
+                                                    sx={{
+                                                        textAlign: idx === 0 ? 'left' : 'center',
+                                                        p: 1.5,
+                                                        borderBottom: '2px solid',
+                                                        borderColor: 'divider',
+                                                        fontWeight: 'bold',
+                                                        bgcolor: 'action.hover'
+                                                    }}
+                                                >
+                                                    {header}
+                                                </Box>
+                                            ))}
+                                        </Box>
                                     </Box>
-                                }
-                            />
-                        </Grid>
+                                    <Box component="tbody">
+                                        {comparisonData.comparison_matrix.rows.map((row, rowIdx) => (
+                                            <Box component="tr" key={rowIdx} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                {row.map((cell, cellIdx) => (
+                                                    <Box
+                                                        component="td"
+                                                        key={cellIdx}
+                                                        sx={{
+                                                            textAlign: cellIdx === 0 ? 'left' : 'center',
+                                                            p: 1.5,
+                                                            borderBottom: '1px solid',
+                                                            borderColor: 'divider',
+                                                            fontWeight: cellIdx === 0 ? 'medium' : 'normal'
+                                                        }}
+                                                    >
+                                                        {cell}
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                </Box>
+                            </Box>
 
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                multiline
-                                rows={4}
-                                label="Error Message"
-                                placeholder="Enter the error message or log snippet..."
-                                value={errorInput}
-                                onChange={(e) => setErrorInput(e.target.value)}
-                                variant="outlined"
-                            />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <Button
-                                fullWidth
-                                variant="contained"
-                                size="large"
-                                startIcon={classifyMutation.isPending ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
-                                onClick={handleSearch}
-                                disabled={classifyMutation.isPending}
-                            >
-                                {classifyMutation.isPending ? 'Classifying...' : 'Classify Error'}
-                            </Button>
-                        </Grid>
-                    </Grid>
+                            <Box sx={{ mt: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                                <Typography variant="subtitle2" color="info.dark" gutterBottom>
+                                    Recommendations:
+                                </Typography>
+                                <Grid container spacing={1}>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography variant="caption" display="block">
+                                            <strong>General Use:</strong> {comparisonData.recommendations.general_use}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography variant="caption" display="block">
+                                            <strong>Production:</strong> {comparisonData.recommendations.production_deployment}
+                                        </Typography>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={4}>
+                                        <Typography variant="caption" display="block">
+                                            <strong>Technical Queries:</strong> {comparisonData.recommendations.technical_queries}
+                                        </Typography>
+                                    </Grid>
+                                </Grid>
+                            </Box>
+                        </Box>
+                    )}
                 </Paper>
 
                 {error && (
