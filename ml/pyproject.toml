@@ -18,6 +18,7 @@ dependencies = [
     "langchain-community",
     "langchain-huggingface",
     "faiss-cpu",
+    "rank-bm25",
 ]
 
 [dependency-groups]
