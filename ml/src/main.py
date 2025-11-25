@@ -38,8 +38,10 @@ def load_and_prep_data(csv_path):
     df = pd.DataFrame(records, columns=header)
 
     df['target_doc'] = df.apply(lambda row:
-        f"{DOCS_ROOT_DIR}\\services\\{row['Service'].lower()}\\{row['Error_Category']}.md", axis=1)
+        os.path.join(DOCS_ROOT_DIR, row['Service'].lower(), f"{row['Error_Category']}.md"), axis=1)
 
+    # Include Service and Category in features for better classification accuracy
+    # API will only accept error_message, but model uses full context
     df['combined_features'] = (
         df['Service'] + " " +
         df['Error_Category'] + " " +
@@ -91,11 +93,9 @@ if model is None:
     
     save_checkpoint(model)
 
-def classify_error(log_line_dict):
-    input_text = f"{log_line_dict['Service']} {log_line_dict['Error_Category']} {log_line_dict['Raw_Input_Snippet']}"
-    
-    prediction = model.predict([input_text])[0]
-    probs = model.predict_proba([input_text])
+def classify_error(error_message):
+    prediction = model.predict([error_message])[0]
+    probs = model.predict_proba([error_message])
     confidence = np.max(probs) * 100
     
     return prediction, confidence

@@ -13,8 +13,7 @@ from datetime import datetime
 # Import classification modules
 from vector_db_classifier import VectorKnowledgeBase, initialize_vector_db
 from semantic_search import DocumentationSearchEngine
-from constants import DOCS_ROOT_DIR, DATASET_PATH, CHECKPOINT_DIR
-import joblib
+from constants import DOCS_ROOT_DIR, DATASET_PATH, API_PORT
 import numpy as np
 
 app = Flask(__name__)
@@ -24,7 +23,6 @@ CORS(app)
 print("Initializing models...")
 vector_kb = None
 semantic_search = None
-rf_model = None
 
 try:
     vector_kb = initialize_vector_db()
@@ -38,14 +36,6 @@ try:
 except Exception as e:
     print(f"✗ Semantic Search failed: {e}")
 
-try:
-    latest_model = os.path.join(CHECKPOINT_DIR, 'latest_model.pkl')
-    if os.path.exists(latest_model):
-        rf_model = joblib.load(latest_model)
-        print("✓ Random Forest model loaded")
-except Exception as e:
-    print(f"✗ Random Forest model failed: {e}")
-
 
 def verify_and_fallback(doc_path, query_text, method):
     """
@@ -54,8 +44,11 @@ def verify_and_fallback(doc_path, query_text, method):
     """
     # Normalize path and fix common issues (e.g., doubled 'services')
     doc_path = os.path.normpath(doc_path)
-    doc_path = doc_path.replace('/services/services/', '/services/')
-    doc_path = doc_path.replace('\\services\\services\\', '\\services\\')
+    # Fix doubled 'services' directory in path
+    services_doubled = os.path.join('services', 'services')
+    services_single = 'services'
+    if services_doubled in doc_path:
+        doc_path = doc_path.replace(services_doubled, services_single)
     
     # Check if the predicted path exists
     if os.path.exists(doc_path):
@@ -91,19 +84,6 @@ def verify_and_fallback(doc_path, query_text, method):
         except Exception as e:
             print(f"✗ Semantic Search fallback failed: {e}")
     
-    # Try Random Forest if not the original method
-    if method != 'RANDOM_FOREST' and rf_model:
-        try:
-            prediction = rf_model.predict([query_text])[0]
-            probs = rf_model.predict_proba([query_text])
-            if os.path.exists(prediction):
-                confidence = float(np.max(probs) * 100)
-                print(f"✓ Fallback: Random Forest found valid path")
-                return prediction, confidence, 'RANDOM_FOREST (Fallback)', True
-            fallback_results.append(('RANDOM_FOREST', prediction))
-        except Exception as e:
-            print(f"✗ Random Forest fallback failed: {e}")
-    
     # If all fallbacks failed, try to find closest existing file
     print(f"⚠ All fallback methods failed or returned non-existent paths")
     print(f"🔍 Searching for closest existing documentation file...")
@@ -134,20 +114,113 @@ def verify_and_fallback(doc_path, query_text, method):
     return doc_path, 0.0, f'{method} (File Not Found)', False
 
 
+def handle_multi_search(query_text):
+    """Run classification with all available methods and aggregate results"""
+    results = []
+    
+    # Try Vector DB
+    if vector_kb:
+        try:
+            result = vector_kb.search(query_text)
+            doc_path = result['doc_path']
+            confidence = parse_confidence(result.get('confidence', 'Unknown'))
+            verified_path, fallback_conf, fallback_source, is_fallback = verify_and_fallback(
+                doc_path, query_text, 'VECTOR_DB'
+            )
+            if is_fallback and fallback_conf is not None:
+                confidence = fallback_conf
+            
+            results.append({
+                'method': 'VECTOR_DB',
+                'doc_path': verified_path,
+                'confidence': confidence,
+                'source': result['source'],
+                'root_cause': result.get('root_cause', ''),
+                'is_fallback': is_fallback
+            })
+        except Exception as e:
+            print(f"Vector DB search failed: {e}")
+    
+    # Try Semantic Search
+    if semantic_search:
+        try:
+            doc_path, confidence = semantic_search.find_relevant_doc(query_text)
+            confidence = float(confidence)
+            verified_path, fallback_conf, fallback_source, is_fallback = verify_and_fallback(
+                doc_path, query_text, 'SEMANTIC_SEARCH'
+            )
+            if is_fallback and fallback_conf is not None:
+                confidence = fallback_conf
+            
+            results.append({
+                'method': 'SEMANTIC_SEARCH',
+                'doc_path': verified_path,
+                'confidence': confidence,
+                'source': 'SEMANTIC_SEARCH',
+                'root_cause': '',
+                'is_fallback': is_fallback
+            })
+        except Exception as e:
+            print(f"Semantic Search failed: {e}")
+    
+    if not results:
+        return jsonify({'error': 'No classification methods available'}), 503
+    
+    # Aggregate results - find consensus or best result
+    doc_path_votes = {}
+    for result in results:
+        path = result['doc_path']
+        if path not in doc_path_votes:
+            doc_path_votes[path] = {'count': 0, 'total_confidence': 0, 'methods': []}
+        doc_path_votes[path]['count'] += 1
+        doc_path_votes[path]['total_confidence'] += result['confidence']
+        doc_path_votes[path]['methods'].append(result['method'])
+    
+    # Find the path with highest consensus (most votes) and highest average confidence
+    best_path = max(doc_path_votes.items(), 
+                    key=lambda x: (x[1]['count'], x[1]['total_confidence'] / x[1]['count']))
+    
+    consensus_path = best_path[0]
+    consensus_count = best_path[1]['count']
+    avg_confidence = best_path[1]['total_confidence'] / best_path[1]['count']
+    consensus_methods = best_path[1]['methods']
+    
+    # Get root cause from any result that has it
+    root_cause = next((r['root_cause'] for r in results if r['root_cause']), '')
+    
+    return jsonify({
+        'multi_search': True,
+        'doc_path': consensus_path,
+        'confidence': avg_confidence,
+        'consensus_count': consensus_count,
+        'total_methods': len(results),
+        'consensus_methods': consensus_methods,
+        'source': 'MULTI_SEARCH',
+        'root_cause': root_cause,
+        'all_results': results
+    })
+
+
 @app.route('/api/classify', methods=['POST'])
 def classify_error():
     """Classify an error using the specified method"""
     try:
         data = request.json
-        service = data.get('service', '')
-        error_category = data.get('error_category', '')
-        raw_snippet = data.get('raw_input_snippet', '')
+        error_message = data.get('error_message', '') or data.get('raw_input_snippet', '')
         method = data.get('method', 'VECTOR_DB')
+        multi_search = data.get('multi_search', False)
 
-        if not raw_snippet:
-            return jsonify({'error': 'raw_input_snippet is required'}), 400
+        if not error_message:
+            return jsonify({'error': 'error_message is required'}), 400
 
-        query_text = f"{service} {error_category} {raw_snippet}"
+        # Use only the error message for classification
+        query_text = error_message
+        
+        # Handle multi-search mode
+        if multi_search:
+            return handle_multi_search(query_text)
+        
+        # Single method search
         doc_path = None
         confidence = None
         source = None
@@ -167,18 +240,9 @@ def classify_error():
             if not semantic_search:
                 return jsonify({'error': 'Semantic Search not available'}), 503
             
-            doc_path, confidence = semantic_search.find_relevant_doc(raw_snippet)
+            doc_path, confidence = semantic_search.find_relevant_doc(error_message)
             confidence = float(confidence)
             source = 'SEMANTIC_SEARCH'
-
-        elif method == 'RANDOM_FOREST':
-            if not rf_model:
-                return jsonify({'error': 'Random Forest model not available'}), 503
-            
-            doc_path = rf_model.predict([query_text])[0]
-            probs = rf_model.predict_proba([query_text])
-            confidence = float(np.max(probs) * 100)
-            source = 'RANDOM_FOREST'
 
         else:
             return jsonify({'error': 'Invalid method'}), 400
@@ -505,9 +569,9 @@ def get_status():
             except:
                 pass
         
-        healthy = vector_kb is not None or semantic_search is not None or rf_model is not None
+        healthy = vector_kb is not None or semantic_search is not None
         
-        model_status = f"RF: {'Ready' if rf_model else 'Not loaded'}, Semantic: {'Ready' if semantic_search else 'Not loaded'}"
+        model_status = f"Semantic: {'Ready' if semantic_search else 'Not loaded'}"
         vector_db_status = "Ready" if vector_kb else "Not initialized"
         
         return jsonify({
@@ -536,5 +600,5 @@ def parse_confidence(confidence):
 if __name__ == '__main__':
     print("\nFlask API Server starting...")
     print("React UI should be available at: http://localhost:3000")
-    print("API endpoints available at: http://localhost:5000/api/*")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print(f"API endpoints available at: http://localhost:{API_PORT}/api/*")
+    app.run(debug=True, host='0.0.0.0', port=API_PORT)

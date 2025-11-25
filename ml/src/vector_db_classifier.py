@@ -67,7 +67,9 @@ class VectorKnowledgeBase:
                     clean_snippet = raw_snippet.strip()
                     clean_cause = root_cause.strip()
 
-                    text_to_embed = f"{service} {category} {clean_snippet}"
+                    # Include service and category in embeddings for better classification
+                    # Even though API only accepts error_message
+                    text_to_embed = f"{service} {category} {clean_snippet} {clean_cause}"
                     
                     ids.append(f"err_{line_number}")
                     documents.append(text_to_embed)
@@ -75,7 +77,7 @@ class VectorKnowledgeBase:
                     metadatas.append({
                         "service": service,
                         "category": category,
-                        "doc_path": f"{DOCS_ROOT_DIR}/services/{service.lower()}/{category}.md",
+                        "doc_path": os.path.join(DOCS_ROOT_DIR, service.lower(), f"{category}.md"),
                         "root_cause": clean_cause,
                         "raw_snippet": clean_snippet
                     })

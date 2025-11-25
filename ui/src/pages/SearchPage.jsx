@@ -25,6 +25,8 @@ import {
     Accordion,
     AccordionSummary,
     AccordionDetails,
+    Switch,
+    FormControlLabel,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -37,25 +39,14 @@ import { classifyError, teachCorrection, getDocContent } from '../services/api';
 
 function SearchPage() {
     const [errorInput, setErrorInput] = useState('');
-    const [service, setService] = useState('');
-    const [errorCategory, setErrorCategory] = useState('');
     const [method, setMethod] = useState('VECTOR_DB');
+    const [multiSearch, setMultiSearch] = useState(true); // Auto-enabled by default
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
     const [feedbackGiven, setFeedbackGiven] = useState(null);
     const [openCorrectionDialog, setOpenCorrectionDialog] = useState(false);
     const [correctPath, setCorrectPath] = useState('');
     const [feedbackSuccess, setFeedbackSuccess] = useState(null);
-
-    const services = ['logitrack', 'meteo-il', 'skyguard'];
-    const categories = [
-        'MISSING_FIELD',
-        'SCHEMA_VALIDATION',
-        'GEO_OUT_OF_BOUNDS',
-        'NEGATIVE_VALUE',
-        'SECURITY_ALERT',
-        'REGEX_MISMATCH',
-    ];
 
     // Mutation for classification
     const classifyMutation = useMutation({
@@ -100,10 +91,9 @@ function SearchPage() {
         }
 
         classifyMutation.mutate({
-            service: service || 'unknown',
-            error_category: errorCategory || 'unknown',
-            raw_input_snippet: errorInput,
+            error_message: errorInput,
             method: method,
+            multi_search: multiSearch,
         });
     };
 
@@ -159,48 +149,8 @@ function SearchPage() {
 
                 <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
                     <Grid container spacing={3}>
-                        <Grid item xs={12} md={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Service (Optional)</InputLabel>
-                                <Select
-                                    value={service}
-                                    label="Service (Optional)"
-                                    onChange={(e) => setService(e.target.value)}
-                                >
-                                    <MenuItem value="">
-                                        <em>None</em>
-                                    </MenuItem>
-                                    {services.map((s) => (
-                                        <MenuItem key={s} value={s}>
-                                            {s}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid item xs={12} md={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Error Category (Optional)</InputLabel>
-                                <Select
-                                    value={errorCategory}
-                                    label="Error Category (Optional)"
-                                    onChange={(e) => setErrorCategory(e.target.value)}
-                                >
-                                    <MenuItem value="">
-                                        <em>None</em>
-                                    </MenuItem>
-                                    {categories.map((c) => (
-                                        <MenuItem key={c} value={c}>
-                                            {c}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <FormControl fullWidth>
+                        <Grid item xs={12} sm={8}>
+                            <FormControl fullWidth disabled={multiSearch}>
                                 <InputLabel>Classification Method</InputLabel>
                                 <Select
                                     value={method}
@@ -208,10 +158,31 @@ function SearchPage() {
                                     onChange={(e) => setMethod(e.target.value)}
                                 >
                                     <MenuItem value="VECTOR_DB">Vector Database (with Learning)</MenuItem>
-                                    <MenuItem value="SEMANTIC_SEARCH">Semantic Search</MenuItem>
-                                    <MenuItem value="RANDOM_FOREST">Random Forest ML</MenuItem>
+                                    <MenuItem value="SEMANTIC_SEARCH">Semantic Search (with Chunking)</MenuItem>
                                 </Select>
                             </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} sm={4}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={multiSearch}
+                                        onChange={(e) => setMultiSearch(e.target.checked)}
+                                        color="primary"
+                                    />
+                                }
+                                label={
+                                    <Box>
+                                        <Typography variant="body2" fontWeight="medium">
+                                            Multi-Engine Search
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Aggregate all methods
+                                        </Typography>
+                                    </Box>
+                                }
+                            />
                         </Grid>
 
                         <Grid item xs={12}>
@@ -259,12 +230,29 @@ function SearchPage() {
                         <CardContent>
                             <Typography variant="h6" gutterBottom>
                                 Classification Result
+                                {result.multi_search && (
+                                    <Chip
+                                        label="Multi-Engine"
+                                        color="success"
+                                        size="small"
+                                        sx={{ ml: 2 }}
+                                    />
+                                )}
                             </Typography>
                             <Divider sx={{ mb: 2 }} />
 
                             {result.warning && (
                                 <Alert severity="warning" sx={{ mb: 2 }}>
                                     {result.warning}
+                                </Alert>
+                            )}
+
+                            {result.multi_search && result.consensus_count && (
+                                <Alert severity="info" sx={{ mb: 2 }}>
+                                    <Typography variant="body2">
+                                        <strong>Consensus:</strong> {result.consensus_count} out of {result.total_methods} methods agree
+                                        {result.consensus_methods && ` (${result.consensus_methods.join(', ')})`}
+                                    </Typography>
                                 </Alert>
                             )}
 
@@ -316,9 +304,13 @@ function SearchPage() {
 
                                 <Grid item xs={12} sm={4}>
                                     <Typography variant="body2" color="text.secondary">
-                                        Method
+                                        {result.multi_search ? 'Methods Used' : 'Method'}
                                     </Typography>
-                                    <Chip label={method} color="secondary" sx={{ mt: 0.5 }} />
+                                    <Chip 
+                                        label={result.multi_search ? result.total_methods : method} 
+                                        color="secondary" 
+                                        sx={{ mt: 0.5 }} 
+                                    />
                                 </Grid>
                             </Grid>
 
@@ -328,6 +320,58 @@ function SearchPage() {
                                         Root Cause
                                     </Typography>
                                     <Typography variant="body1">{result.root_cause}</Typography>
+                                </Box>
+                            )}
+
+                            {/* Multi-search individual results */}
+                            {result.multi_search && result.all_results && result.all_results.length > 0 && (
+                                <Box sx={{ mt: 3 }}>
+                                    <Accordion>
+                                        <AccordionSummary
+                                            expandIcon={<ExpandMoreIcon />}
+                                            aria-controls="individual-results-content"
+                                            id="individual-results-header"
+                                        >
+                                            <Typography variant="body1" fontWeight="medium">
+                                                Individual Method Results ({result.all_results.length})
+                                            </Typography>
+                                        </AccordionSummary>
+                                        <AccordionDetails>
+                                            <Grid container spacing={2}>
+                                                {result.all_results.map((methodResult, idx) => (
+                                                    <Grid item xs={12} key={idx}>
+                                                        <Paper variant="outlined" sx={{ p: 2 }}>
+                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                                <Chip label={methodResult.method} color="primary" size="small" />
+                                                                <Chip 
+                                                                    label={`${methodResult.confidence.toFixed(2)}%`} 
+                                                                    color={getConfidenceColor(methodResult.confidence)}
+                                                                    size="small"
+                                                                />
+                                                            </Box>
+                                                            <Typography 
+                                                                variant="body2" 
+                                                                sx={{ 
+                                                                    fontFamily: 'monospace', 
+                                                                    fontSize: '0.85rem',
+                                                                    bgcolor: 'grey.50',
+                                                                    p: 1,
+                                                                    borderRadius: 1
+                                                                }}
+                                                            >
+                                                                {methodResult.doc_path}
+                                                            </Typography>
+                                                            {methodResult.is_fallback && (
+                                                                <Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block' }}>
+                                                                    ⚠️ Fallback result
+                                                                </Typography>
+                                                            )}
+                                                        </Paper>
+                                                    </Grid>
+                                                ))}
+                                            </Grid>
+                                        </AccordionDetails>
+                                    </Accordion>
                                 </Box>
                             )}
 

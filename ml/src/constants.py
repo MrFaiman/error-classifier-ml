@@ -16,3 +16,8 @@ INPUT_EXAMPLES_PATH = os.path.join(DATA_DIR, 'input_examples.json')
 
 # Model configuration
 EMBEDDING_MODEL = 'all-MiniLM-L6-v2'
+# Chunking configuration for LangChain
+CHUNK_SIZE = 500  # Characters per chunk
+CHUNK_OVERLAP = 50  # Overlap between chunks
+# API configuration
+API_PORT = 3100
