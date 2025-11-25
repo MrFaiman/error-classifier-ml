@@ -11,8 +11,7 @@ import glob
 from datetime import datetime
 
 # Import classification modules
-from vector_db_classifier import VectorKnowledgeBase, initialize_vector_db
-from semantic_search import DocumentationSearchEngine
+from search_engines import VectorKnowledgeBase, initialize_vector_db, DocumentationSearchEngine, HybridSearchEngine
 from constants import DOCS_ROOT_DIR, DATASET_PATH, API_PORT
 import numpy as np
 
@@ -23,6 +22,7 @@ CORS(app)
 print("Initializing models...")
 vector_kb = None
 semantic_search = None
+hybrid_search = None
 
 try:
     vector_kb = initialize_vector_db()
@@ -35,6 +35,12 @@ try:
     print("✓ Semantic Search initialized")
 except Exception as e:
     print(f"✗ Semantic Search failed: {e}")
+
+try:
+    hybrid_search = HybridSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
+    print("✓ Hybrid Search initialized")
+except Exception as e:
+    print(f"✗ Hybrid Search failed: {e}")
 
 
 def verify_and_fallback(doc_path, query_text, method):
@@ -163,6 +169,28 @@ def handle_multi_search(query_text):
         except Exception as e:
             print(f"Semantic Search failed: {e}")
     
+    # Try Hybrid Search
+    if hybrid_search:
+        try:
+            doc_path, confidence = hybrid_search.find_relevant_doc(query_text)
+            confidence = float(confidence)
+            verified_path, fallback_conf, fallback_source, is_fallback = verify_and_fallback(
+                doc_path, query_text, 'HYBRID_SEARCH'
+            )
+            if is_fallback and fallback_conf is not None:
+                confidence = fallback_conf
+            
+            results.append({
+                'method': 'HYBRID_SEARCH',
+                'doc_path': verified_path,
+                'confidence': confidence,
+                'source': 'HYBRID_SEARCH',
+                'root_cause': '',
+                'is_fallback': is_fallback
+            })
+        except Exception as e:
+            print(f"Hybrid Search failed: {e}")
+    
     if not results:
         return jsonify({'error': 'No classification methods available'}), 503
     
@@ -243,6 +271,14 @@ def classify_error():
             doc_path, confidence = semantic_search.find_relevant_doc(error_message)
             confidence = float(confidence)
             source = 'SEMANTIC_SEARCH'
+
+        elif method == 'HYBRID_SEARCH':
+            if not hybrid_search:
+                return jsonify({'error': 'Hybrid Search not available'}), 503
+            
+            doc_path, confidence = hybrid_search.find_relevant_doc(error_message)
+            confidence = float(confidence)
+            source = 'HYBRID_SEARCH'
 
         else:
             return jsonify({'error': 'Invalid method'}), 400
@@ -569,9 +605,17 @@ def get_status():
             except:
                 pass
         
-        healthy = vector_kb is not None or semantic_search is not None
+        healthy = vector_kb is not None or semantic_search is not None or hybrid_search is not None
         
-        model_status = f"Semantic: {'Ready' if semantic_search else 'Not loaded'}"
+        methods_available = []
+        if vector_kb:
+            methods_available.append('VECTOR_DB')
+        if semantic_search:
+            methods_available.append('SEMANTIC_SEARCH')
+        if hybrid_search:
+            methods_available.append('HYBRID_SEARCH')
+        
+        model_status = f"{', '.join(methods_available)}" if methods_available else "No methods loaded"
         vector_db_status = "Ready" if vector_kb else "Not initialized"
         
         return jsonify({

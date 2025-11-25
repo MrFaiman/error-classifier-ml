@@ -108,7 +108,7 @@ if os.path.exists(INPUT_EXAMPLES_PATH):
     USE_VECTOR_DB = True  # Set to False to use semantic search or traditional ML
     
     if USE_VECTOR_DB:
-        from vector_db_classifier import initialize_vector_db
+        from search_engines import initialize_vector_db
         vector_kb = initialize_vector_db()
         
         print("\n--- Running Inference (Vector DB) ---")
@@ -122,7 +122,7 @@ if os.path.exists(INPUT_EXAMPLES_PATH):
                 print(f"Confidence Level: {result['confidence']}")
             print("-" * 30)
     else:
-        from semantic_search import DocumentationSearchEngine
+        from search_engines import DocumentationSearchEngine
         doc_search_engine = DocumentationSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
 
         print("\n--- Running Inference (Semantic Search) ---")

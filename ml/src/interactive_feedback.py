@@ -3,7 +3,7 @@ Interactive feedback session for the Vector DB Classifier.
 Allows users to test error classification and provide corrections.
 """
 
-from vector_db_classifier import initialize_vector_db
+from search_engines import initialize_vector_db
 
 
 def run_interactive_session(kb=None):
