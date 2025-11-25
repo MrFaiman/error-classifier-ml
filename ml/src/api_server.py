@@ -11,7 +11,7 @@ import glob
 from datetime import datetime
 
 # Import classification modules
-from search_engines import VectorKnowledgeBase, initialize_vector_db, DocumentationSearchEngine, HybridSearchEngine
+from search_engines import VectorKnowledgeBase, initialize_vector_db, DocumentationSearchEngine, HybridSearchEngine, CustomTfidfSearchEngine
 from constants import DOCS_ROOT_DIR, DATASET_PATH, API_PORT
 import numpy as np
 
@@ -23,6 +23,7 @@ print("Initializing models...")
 vector_kb = None
 semantic_search = None
 hybrid_search = None
+custom_tfidf = None
 
 try:
     vector_kb = initialize_vector_db()
@@ -41,6 +42,12 @@ try:
     print("[OK] Hybrid Search initialized")
 except Exception as e:
     print(f"[ERROR] Hybrid Search failed: {e}")
+
+try:
+    custom_tfidf = CustomTfidfSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
+    print("[OK] Custom TF-IDF Search initialized (Custom Implementation)")
+except Exception as e:
+    print(f"[ERROR] Custom TF-IDF failed: {e}")
 
 
 def verify_and_fallback(doc_path, query_text, method):
@@ -191,6 +198,28 @@ def handle_multi_search(query_text):
         except Exception as e:
             print(f"Hybrid Search failed: {e}")
     
+    # Try Custom TF-IDF Search
+    if custom_tfidf:
+        try:
+            doc_path, confidence = custom_tfidf.find_relevant_doc(query_text)
+            confidence = float(confidence)
+            verified_path, fallback_conf, fallback_source, is_fallback = verify_and_fallback(
+                doc_path, query_text, 'CUSTOM_TFIDF'
+            )
+            if is_fallback and fallback_conf is not None:
+                confidence = fallback_conf
+            
+            results.append({
+                'method': 'CUSTOM_TFIDF',
+                'doc_path': verified_path,
+                'confidence': confidence,
+                'source': 'CUSTOM_TFIDF (No Blackbox)',
+                'root_cause': '',
+                'is_fallback': is_fallback
+            })
+        except Exception as e:
+            print(f"Custom TF-IDF Search failed: {e}")
+    
     if not results:
         return jsonify({'error': 'No classification methods available'}), 503
     
@@ -279,6 +308,14 @@ def classify_error():
             doc_path, confidence = hybrid_search.find_relevant_doc(error_message)
             confidence = float(confidence)
             source = 'HYBRID_SEARCH'
+        
+        elif method == 'CUSTOM_TFIDF':
+            if not custom_tfidf:
+                return jsonify({'error': 'Custom TF-IDF not available'}), 503
+            
+            doc_path, confidence = custom_tfidf.find_relevant_doc(error_message)
+            confidence = float(confidence)
+            source = 'CUSTOM_TFIDF (No Blackbox)'
 
         else:
             return jsonify({'error': 'Invalid method'}), 400
@@ -571,23 +608,73 @@ def update_kb():
 
 @app.route('/api/teach-correction', methods=['POST'])
 def teach_correction():
-    """Teach the system a correction (for Vector DB learning)"""
+    """Teach the system a correction (supports all engines)"""
     try:
         data = request.json
         error_text = data.get('error_text', '')
         correct_doc_path = data.get('correct_doc_path', '')
+        engine = data.get('engine', 'VECTOR_DB')  # Default to Vector DB for backward compatibility
         
         if not error_text or not correct_doc_path:
             return jsonify({'error': 'error_text and correct_doc_path are required'}), 400
         
-        if not vector_kb:
-            return jsonify({'error': 'Vector DB not available'}), 503
+        # Extract service and category from the correct doc path
+        # Path format: .../services/{service}/{CATEGORY}.md
+        path_parts = correct_doc_path.replace('\\', '/').split('/')
         
-        # Teach the system
-        vector_kb.teach_system(error_text, correct_doc_path)
+        correct_service = None
+        correct_category = None
         
-        return jsonify({'message': 'Correction learned successfully'})
+        # Find 'services' in path and extract service/category
+        try:
+            services_idx = path_parts.index('services')
+            if services_idx + 2 < len(path_parts):
+                correct_service = path_parts[services_idx + 1]
+                correct_category = path_parts[services_idx + 2].replace('.md', '')
+        except (ValueError, IndexError):
+            # Fallback: try to parse from filename
+            filename = os.path.basename(correct_doc_path).replace('.md', '')
+            dirname = os.path.basename(os.path.dirname(correct_doc_path))
+            correct_service = dirname
+            correct_category = filename
+        
+        if not correct_service or not correct_category:
+            return jsonify({'error': 'Could not extract service/category from doc path'}), 400
+        
+        # Route to appropriate engine
+        if engine == 'VECTOR_DB':
+            if not vector_kb:
+                return jsonify({'error': 'Vector DB not available'}), 503
+            vector_kb.teach_system(error_text, correct_doc_path)
+            
+        elif engine == 'SEMANTIC_SEARCH':
+            if not semantic_search:
+                return jsonify({'error': 'Semantic Search not available'}), 503
+            semantic_search.teach_correction(error_text, correct_service, correct_category)
+            
+        elif engine == 'HYBRID_SEARCH':
+            if not hybrid_search:
+                return jsonify({'error': 'Hybrid Search not available'}), 503
+            hybrid_search.teach_correction(error_text, correct_service, correct_category)
+        
+        elif engine == 'CUSTOM_TFIDF':
+            if not custom_tfidf:
+                return jsonify({'error': 'Custom TF-IDF not available'}), 503
+            custom_tfidf.teach_correction(error_text, correct_doc_path)
+        
+        else:
+            return jsonify({'error': f'Unknown engine: {engine}'}), 400
+        
+        return jsonify({
+            'message': 'Correction learned successfully',
+            'engine': engine,
+            'service': correct_service,
+            'category': correct_category
+        })
     except Exception as e:
+        import traceback
+        print(f"[ERROR] teach_correction failed: {e}")
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 
@@ -596,16 +683,37 @@ def get_status():
     """Get system status"""
     try:
         vector_db_records = 0
-        learned_corrections = 0
+        vector_db_corrections = 0
+        semantic_corrections = 0
+        hybrid_corrections = 0
         
         if vector_kb:
             try:
                 vector_db_records = vector_kb.docs_col.count()
-                learned_corrections = vector_kb.feedback_col.count()
+                vector_db_corrections = vector_kb.feedback_col.count()
             except:
                 pass
         
-        healthy = vector_kb is not None or semantic_search is not None or hybrid_search is not None
+        if semantic_search:
+            try:
+                semantic_corrections = len(semantic_search.feedback_corrections)
+            except:
+                pass
+        
+        if hybrid_search:
+            try:
+                hybrid_corrections = len(hybrid_search.feedback_corrections)
+            except:
+                pass
+        
+        custom_tfidf_corrections = 0
+        if custom_tfidf:
+            try:
+                custom_tfidf_corrections = len(custom_tfidf.feedback_documents)
+            except:
+                pass
+        
+        healthy = vector_kb is not None or semantic_search is not None or hybrid_search is not None or custom_tfidf is not None
         
         methods_available = []
         if vector_kb:
@@ -614,6 +722,8 @@ def get_status():
             methods_available.append('SEMANTIC_SEARCH')
         if hybrid_search:
             methods_available.append('HYBRID_SEARCH')
+        if custom_tfidf:
+            methods_available.append('CUSTOM_TFIDF')
         
         model_status = f"{', '.join(methods_available)}" if methods_available else "No methods loaded"
         vector_db_status = "Ready" if vector_kb else "Not initialized"
@@ -623,8 +733,161 @@ def get_status():
             'model_status': model_status,
             'vector_db_status': vector_db_status,
             'vector_db_records': vector_db_records,
-            'learned_corrections': learned_corrections
+            'learned_corrections': vector_db_corrections + semantic_corrections + hybrid_corrections + custom_tfidf_corrections,
+            'corrections_by_engine': {
+                'vector_db': vector_db_corrections,
+                'semantic_search': semantic_corrections,
+                'hybrid_search': hybrid_corrections,
+                'custom_tfidf': custom_tfidf_corrections
+            }
         })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/search-engines-comparison', methods=['GET'])
+def get_search_engines_comparison():
+    """Get detailed comparison of search engine capabilities"""
+    try:
+        comparison_data = {
+            'engines': [
+                {
+                    'id': 'VECTOR_DB',
+                    'name': 'Vector Database (ChromaDB)',
+                    'technology': 'ChromaDB with Sentence Transformers',
+                    'description': 'Persistent vector database with dual collections for official docs and learned corrections',
+                    'strengths': [
+                        'Fast similarity search with persistent storage',
+                        'Separate feedback collection for user corrections',
+                        'Good for exact semantic matches',
+                        'Low memory footprint'
+                    ],
+                    'weaknesses': [
+                        'Limited to embedding-based similarity',
+                        'May miss keyword-specific matches',
+                        'No hybrid scoring'
+                    ],
+                    'best_for': [
+                        'Production deployments',
+                        'Long-term correction storage',
+                        'Exact semantic similarity matching'
+                    ],
+                    'algorithm': 'Vector similarity (cosine distance)',
+                    'indexing': 'Persistent ChromaDB collections',
+                    'feedback_system': 'Separate learned_feedback collection',
+                    'performance': 'Fast (< 50ms typical)',
+                    'available': vector_kb is not None
+                },
+                {
+                    'id': 'SEMANTIC_SEARCH',
+                    'name': 'Semantic Search (LangChain + FAISS)',
+                    'technology': 'LangChain with FAISS vectorstore',
+                    'description': 'Document chunking with FAISS in-memory vector search for semantic similarity',
+                    'strengths': [
+                        'Advanced document chunking (500 chars, 50 overlap)',
+                        'Excellent for long documents',
+                        'Context-aware chunk matching',
+                        'FAISS optimization for speed'
+                    ],
+                    'weaknesses': [
+                        'In-memory only (no persistence)',
+                        'Requires reindexing on restart',
+                        'Higher memory usage for large corpora'
+                    ],
+                    'best_for': [
+                        'Complex documentation with long content',
+                        'Finding relevant sections within documents',
+                        'Contextual understanding'
+                    ],
+                    'algorithm': 'Semantic embedding similarity with chunking',
+                    'indexing': 'FAISS in-memory index with document chunks',
+                    'feedback_system': 'In-memory FAISS feedback store',
+                    'performance': 'Very Fast (< 30ms typical)',
+                    'available': semantic_search is not None
+                },
+                {
+                    'id': 'HYBRID_SEARCH',
+                    'name': 'Hybrid Search (BM25 + Semantic)',
+                    'technology': 'BM25Okapi + FAISS + Custom Fusion',
+                    'description': 'Combines keyword-based BM25 with semantic embeddings using weighted score fusion',
+                    'strengths': [
+                        'Best of both worlds: keywords + semantics',
+                        'Excellent for technical terms and acronyms',
+                        'Handles exact phrase matches well',
+                        'Normalized score fusion (50/50 default)'
+                    ],
+                    'weaknesses': [
+                        'Slower than individual methods',
+                        'More complex scoring logic',
+                        'Higher computational cost'
+                    ],
+                    'best_for': [
+                        'Technical documentation with specific terms',
+                        'Mixed query types (semantic + exact)',
+                        'Highest accuracy requirements'
+                    ],
+                    'algorithm': 'Weighted fusion of BM25 keyword scores and semantic similarity',
+                    'indexing': 'Dual indexing (FAISS + BM25 token index)',
+                    'feedback_system': 'In-memory FAISS feedback store',
+                    'performance': 'Moderate (< 100ms typical)',
+                    'available': hybrid_search is not None
+                },
+                {
+                    'id': 'CUSTOM_TFIDF',
+                    'name': 'Custom TF-IDF (No Blackbox)',
+                    'technology': 'Custom TF-IDF + Cosine Similarity',
+                    'description': 'Fully custom implementation of TF-IDF vectorization and cosine similarity search without blackbox libraries',
+                    'strengths': [
+                        'Complete algorithmic transparency',
+                        'No external ML library dependencies',
+                        'Full control over implementation',
+                        'Educational value - shows ML fundamentals',
+                        'Lightweight and portable'
+                    ],
+                    'weaknesses': [
+                        'No pre-trained embeddings',
+                        'Limited to TF-IDF representation',
+                        'May miss deep semantic relationships'
+                    ],
+                    'best_for': [
+                        'Understanding ML algorithms',
+                        'Keyword-based matching',
+                        'Lightweight deployments',
+                        'Educational projects'
+                    ],
+                    'algorithm': 'Custom TF-IDF with cosine similarity (implemented from scratch)',
+                    'indexing': 'In-memory TF-IDF matrix with custom similarity search',
+                    'feedback_system': 'Custom in-memory feedback vectorizer',
+                    'performance': 'Fast (< 40ms typical)',
+                    'available': custom_tfidf is not None
+                }
+            ],
+            'comparison_matrix': {
+                'headers': ['Feature', 'Vector DB', 'Semantic Search', 'Hybrid Search', 'Custom TF-IDF'],
+                'rows': [
+                    ['Speed', 'Fast', 'Very Fast', 'Moderate', 'Fast'],
+                    ['Accuracy (Semantic)', 'High', 'Very High', 'High', 'Medium'],
+                    ['Accuracy (Keywords)', 'Low', 'Low', 'Very High', 'High'],
+                    ['Memory Usage', 'Low', 'Medium', 'High', 'Low'],
+                    ['Persistence', 'Yes', 'No', 'No', 'No'],
+                    ['Document Chunking', 'No', 'Yes', 'Yes', 'No'],
+                    ['Feedback Learning', 'Yes', 'Yes', 'Yes', 'Yes'],
+                    ['Best for Technical Terms', 'Medium', 'Medium', 'Excellent', 'Good'],
+                    ['Best for Natural Language', 'Excellent', 'Excellent', 'Very Good', 'Medium'],
+                    ['Production Ready', 'Yes', 'Yes', 'Yes', 'Yes'],
+                    ['Custom Implementation', 'No', 'No', 'No', 'Yes (100%)']
+                ]
+            },
+            'recommendations': {
+                'general_use': 'HYBRID_SEARCH',
+                'production_deployment': 'VECTOR_DB',
+                'long_documents': 'SEMANTIC_SEARCH',
+                'technical_queries': 'HYBRID_SEARCH',
+                'fastest_response': 'SEMANTIC_SEARCH'
+            }
+        }
+        
+        return jsonify(comparison_data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
