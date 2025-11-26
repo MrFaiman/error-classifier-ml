@@ -27,7 +27,6 @@ class HybridCustomSearchEngine:
     3. Fuzzy Matching with Edit Distance
     
     Uses weighted score fusion to combine multiple signals
-    100% Custom Implementation - No Blackbox Libraries!
     """
     
     def __init__(self, docs_root_dir=None, max_features=5000, 

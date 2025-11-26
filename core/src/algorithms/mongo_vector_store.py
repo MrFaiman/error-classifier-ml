@@ -1,7 +1,6 @@
 """
 MongoDB Vector Store
 Stores TF-IDF and BM25 vectors in MongoDB for persistent retrieval
-100% Custom Implementation with MongoDB backend
 """
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import DuplicateKeyError

@@ -498,4 +498,3 @@ if __name__ == "__main__":
     print("- BM25+ variant with delta parameter")
     print("- Custom tokenization and IDF calculation")
     print("- Top-N retrieval and full scoring")
-    print("- 100% custom implementation - no external libraries!")

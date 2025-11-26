@@ -1,7 +1,6 @@
 """
 Flask API Server for Error Classification
 Main entry point for the REST API
-Uses 100% Custom ML Implementations (No Blackbox Libraries)
 """
 import sys
 import os
@@ -18,7 +17,6 @@ app = create_app()
 if __name__ == '__main__':
     print("\n" + "=" * 70)
     print("Error Classification API Server")
-    print("100% Custom ML Implementation - No Blackbox Libraries")
     print("=" * 70 + "\n")
     
     print(f"Starting server on http://localhost:{API_PORT}")

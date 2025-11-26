@@ -71,12 +71,6 @@ function EngineInfoSection({ comparisonData }) {
                             </Box>
                         </CardContent>
                     </Card>
-
-                    <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
-                        <Typography variant="body2" color="success.dark" fontWeight="medium">
-                            ✅ 100% custom implementation - no blackbox libraries!
-                        </Typography>
-                    </Box>
                 </Box>
             )}
         </Paper>

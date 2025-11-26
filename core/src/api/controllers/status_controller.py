@@ -64,9 +64,8 @@ def get_engines_comparison():
                 'id': 'HYBRID_CUSTOM',
                 'name': 'Hybrid Custom (TF-IDF + BM25)',
                 'technology': 'Custom TF-IDF + BM25 Ranking + Adaptive Feedback Loop',
-                'description': 'State-of-the-art hybrid search combining TF-IDF and BM25 probabilistic ranking with reinforcement learning feedback loop - 100% custom implementation',
+                'description': 'State-of-the-art hybrid search combining TF-IDF and BM25 probabilistic ranking with reinforcement learning feedback loop',
                 'strengths': [
-                    '100% custom implementation - no blackbox libraries',
                     'BM25 probabilistic ranking (Okapi BM25)',
                     'Weighted score fusion (TF-IDF + BM25)',
                     'Adaptive feedback loop with reinforcement learning',

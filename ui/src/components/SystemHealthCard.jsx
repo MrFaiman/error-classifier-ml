@@ -73,15 +73,6 @@ function SystemHealthCard({ status }) {
                                 secondary="Learns from user feedback to improve confidence over time"
                             />
                         </ListItem>
-                        <ListItem>
-                            <ListItemIcon>
-                                <SearchIcon color="primary" />
-                            </ListItemIcon>
-                            <ListItemText
-                                primary="100% Custom ML Implementation"
-                                secondary="No blackbox libraries - complete algorithmic transparency"
-                            />
-                        </ListItem>
                     </List>
                 </Box>
 
