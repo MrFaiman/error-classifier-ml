@@ -23,8 +23,8 @@ echo -e "${GREEN}✓ API server running${NC}"
 
 # Check if UI dev server is running
 echo -e "${YELLOW}Checking UI dev server...${NC}"
-if ! curl -s http://localhost:5173 > /dev/null; then
-    echo -e "${RED}❌ UI dev server not running on port 5173${NC}"
+if ! curl -s http://localhost:3000 > /dev/null; then
+    echo -e "${RED}❌ UI dev server not running on port 3000${NC}"
     echo "Please start: npm run dev"
     exit 1
 fi

@@ -3,7 +3,7 @@
  */
 
 export const TEST_CONFIG = {
-  baseUrl: process.env.TEST_BASE_URL || 'http://localhost:5173',
+  baseUrl: process.env.TEST_BASE_URL || 'http://localhost:3000',
   apiUrl: process.env.TEST_API_URL || 'http://localhost:3100',
   timeout: 30000,
   slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO) : 0,
