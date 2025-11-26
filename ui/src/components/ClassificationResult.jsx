@@ -10,11 +10,13 @@ import {
     Grid,
     Chip,
     ButtonGroup,
+    Paper,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import SpeedIcon from '@mui/icons-material/Speed';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 
 function ClassificationResult({
     result,
@@ -114,6 +116,31 @@ function ClassificationResult({
                         <Chip label="HYBRID_CUSTOM" color="secondary" sx={{ mt: 0.5 }} />
                     </Grid>
                 </Grid>
+
+                {result.explanation && (
+                    <Box sx={{ mt: 3 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <LightbulbIcon color="primary" />
+                            <Typography variant="body2" color="text.secondary" fontWeight="medium">
+                                AI Explanation
+                            </Typography>
+                        </Box>
+                        <Paper 
+                            elevation={0} 
+                            sx={{ 
+                                bgcolor: 'primary.50', 
+                                p: 2, 
+                                borderRadius: 2,
+                                border: '1px solid',
+                                borderColor: 'primary.200'
+                            }}
+                        >
+                            <Typography variant="body1" sx={{ lineHeight: 1.7 }}>
+                                {result.explanation}
+                            </Typography>
+                        </Paper>
+                    </Box>
+                )}
 
                 {result.root_cause && (
                     <Box sx={{ mt: 2 }}>

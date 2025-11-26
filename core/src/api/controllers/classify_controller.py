@@ -65,12 +65,13 @@ def classify_single(error_message, method):
         method: Search method (ignored - always uses HYBRID_CUSTOM)
         
     Returns:
-        tuple: (doc_path, confidence, source, error_message)
+        tuple: (doc_path, confidence, source, explanation, error_message)
     """
     engine = search_service.get_engine(method)
+    explainer = search_service.get_explainer()
     
     if not engine:
-        return None, None, None, 'Hybrid Custom engine not available'
+        return None, None, None, None, 'Hybrid Custom engine not available'
     
     try:
         doc_path, confidence = engine.find_relevant_doc(error_message)
@@ -78,10 +79,26 @@ def classify_single(error_message, method):
         
         source = 'HYBRID_CUSTOM (TF-IDF + BM25)'
         
-        return doc_path, confidence, source, None
+        # Generate NLP explanation if explainer is available
+        explanation = None
+        if explainer:
+            try:
+                # Extract metadata from doc_path
+                metadata = engine._extract_metadata(doc_path) if hasattr(engine, '_extract_metadata') else {}
+                explanation = explainer.explain_error(
+                    error_message, 
+                    doc_path, 
+                    confidence,
+                    metadata
+                )
+            except Exception as e:
+                print(f"[WARNING] Failed to generate explanation: {e}")
+                explanation = None
+        
+        return doc_path, confidence, source, explanation, None
         
     except Exception as e:
-        return None, None, None, str(e)
+        return None, None, None, None, str(e)
 
 
 def classify_multi(query_text):
@@ -93,9 +110,10 @@ def classify_multi(query_text):
         query_text: Query to classify
         
     Returns:
-        dict: Results from hybrid engine
+        dict: Results from hybrid engine with NLP explanation
     """
     engines = search_service.get_all_engines()
+    explainer = search_service.get_explainer()
     
     # Only use hybrid engine
     if not engines['hybrid_custom']:
@@ -110,6 +128,20 @@ def classify_multi(query_text):
         if is_fallback and fallback_conf:
             confidence = fallback_conf
         
+        # Generate NLP explanation
+        explanation = None
+        if explainer:
+            try:
+                metadata = engines['hybrid_custom']._extract_metadata(verified_path) if hasattr(engines['hybrid_custom'], '_extract_metadata') else {}
+                explanation = explainer.explain_error(
+                    query_text,
+                    verified_path,
+                    confidence,
+                    metadata
+                )
+            except Exception as e:
+                print(f"[WARNING] Failed to generate explanation: {e}")
+        
         return {
             'multi_search': True,
             'doc_path': verified_path,
@@ -119,12 +151,14 @@ def classify_multi(query_text):
             'consensus_methods': ['HYBRID_CUSTOM'],
             'source': 'HYBRID_CUSTOM (TF-IDF + BM25)',
             'root_cause': '',
+            'explanation': explanation,
             'all_results': [{
                 'method': 'HYBRID_CUSTOM',
                 'source': 'HYBRID_CUSTOM (TF-IDF + BM25)',
                 'doc_path': verified_path,
                 'confidence': confidence,
-                'is_fallback': is_fallback
+                'is_fallback': is_fallback,
+                'explanation': explanation
             }]
         }
     except Exception as e:

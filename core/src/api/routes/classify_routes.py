@@ -29,7 +29,7 @@ def classify_error():
             return jsonify(result)
         
         # Single method search
-        doc_path, confidence, source, error = classify_controller.classify_single(error_message, method)
+        doc_path, confidence, source, explanation, error = classify_controller.classify_single(error_message, method)
         
         if error:
             return jsonify({'error': error}), 503
@@ -51,6 +51,10 @@ def classify_error():
             'confidence': confidence,
             'source': source,
         }
+        
+        # Add explanation if available
+        if explanation:
+            response['explanation'] = explanation
         
         if is_fallback and not os.path.exists(verified_path):
             response['warning'] = 'Predicted file does not exist. No valid alternative found.'

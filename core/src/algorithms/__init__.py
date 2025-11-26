@@ -16,6 +16,7 @@ from .bm25 import BM25, BM25Plus, BM25Okapi, compare_bm25_variants
 from .feedback_loop import FeedbackLoop
 from .mongo_feedback_database import MongoFeedbackDatabase
 from .mongo_vector_store import MongoVectorStore
+from .nlp_explainer import NLPErrorExplainer, get_explainer
 
 __all__ = [
     # TF-IDF
@@ -45,4 +46,7 @@ __all__ = [
     'MongoFeedbackDatabase',
     # Vector stores
     'MongoVectorStore',
+    # NLP Explainer
+    'NLPErrorExplainer',
+    'get_explainer',
 ]

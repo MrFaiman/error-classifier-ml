@@ -10,6 +10,7 @@ import {
     Chip,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 
 function MultiSearchResults({ results, getConfidenceColor }) {
     if (!results || results.length === 0) {
@@ -60,6 +61,30 @@ function MultiSearchResults({ results, getConfidenceColor }) {
                                     >
                                         {methodResult.doc_path}
                                     </Typography>
+                                    {methodResult.explanation && (
+                                        <Box sx={{ mt: 2 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                                                <LightbulbIcon fontSize="small" color="primary" />
+                                                <Typography variant="caption" color="text.secondary" fontWeight="medium">
+                                                    Explanation
+                                                </Typography>
+                                            </Box>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    fontSize: '0.85rem',
+                                                    bgcolor: 'primary.50',
+                                                    p: 1.5,
+                                                    borderRadius: 1,
+                                                    lineHeight: 1.6,
+                                                    border: '1px solid',
+                                                    borderColor: 'primary.100'
+                                                }}
+                                            >
+                                                {methodResult.explanation}
+                                            </Typography>
+                                        </Box>
+                                    )}
                                     {methodResult.is_fallback && (
                                         <Typography
                                             variant="caption"

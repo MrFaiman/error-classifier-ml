@@ -4,6 +4,7 @@ Manages initialization and access to custom ML search engines
 """
 from search_engines import HybridCustomSearchEngine
 from constants import DOCS_ROOT_DIR, MONGODB_CONNECTION_STRING
+from algorithms import get_explainer
 
 
 class SearchEngineService:
@@ -11,7 +12,9 @@ class SearchEngineService:
     
     def __init__(self):
         self.hybrid_custom = None
+        self.nlp_explainer = None
         self._initialize_engines()
+        self._initialize_explainer()
     
     def _initialize_engines(self):
         """Initialize Hybrid Custom search engine"""
@@ -28,10 +31,26 @@ class SearchEngineService:
         except Exception as e:
             print(f"[ERROR] Hybrid Custom Search failed: {e}")
     
+    def _initialize_explainer(self):
+        """Initialize NLP explainer for error explanations"""
+        print("Initializing NLP Error Explainer...")
+        
+        try:
+            # Use lightweight model for faster initialization
+            self.nlp_explainer = get_explainer(model_name="t5-small")
+            print("[OK] NLP Explainer initialized (T5-small model)")
+        except Exception as e:
+            print(f"[WARNING] NLP Explainer initialization failed: {e}")
+            print("[INFO] Explanations will use rule-based fallback")
+    
     def get_engine(self, method):
         """Get search engine by method name"""
         # Always return hybrid for any method
         return self.hybrid_custom
+    
+    def get_explainer(self):
+        """Get NLP explainer instance"""
+        return self.nlp_explainer
     
     def get_all_engines(self):
         """Get all available engines"""
