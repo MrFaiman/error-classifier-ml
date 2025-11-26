@@ -122,18 +122,27 @@ function ExamModePage() {
                         <Typography variant="h6" gutterBottom>
                             Choose Quiz Length
                         </Typography>
-                        <Grid container spacing={2} sx={{ mt: 2 }}>
+                        <Grid container spacing={3} sx={{ mt: 2 }}>
                             <Grid item xs={12} sm={4}>
                                 <Button
                                     variant="outlined"
                                     fullWidth
                                     size="large"
                                     onClick={() => handleStartQuiz(5)}
-                                    sx={{ py: 2 }}
+                                    sx={{
+                                        py: 3,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 0.5,
+                                        textTransform: 'none',
+                                    }}
                                 >
-                                    Quick Quiz
-                                    <br />
-                                    <Typography variant="caption">5 Questions</Typography>
+                                    <Typography variant="h6" fontWeight="bold">
+                                        Quick Quiz
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        5 Questions
+                                    </Typography>
                                 </Button>
                             </Grid>
                             <Grid item xs={12} sm={4}>
@@ -142,11 +151,20 @@ function ExamModePage() {
                                     fullWidth
                                     size="large"
                                     onClick={() => handleStartQuiz(10)}
-                                    sx={{ py: 2 }}
+                                    sx={{
+                                        py: 3,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 0.5,
+                                        textTransform: 'none',
+                                    }}
                                 >
-                                    Standard Exam
-                                    <br />
-                                    <Typography variant="caption">10 Questions</Typography>
+                                    <Typography variant="h6" fontWeight="bold">
+                                        Standard Exam
+                                    </Typography>
+                                    <Typography variant="caption">
+                                        10 Questions
+                                    </Typography>
                                 </Button>
                             </Grid>
                             <Grid item xs={12} sm={4}>
@@ -155,11 +173,20 @@ function ExamModePage() {
                                     fullWidth
                                     size="large"
                                     onClick={() => handleStartQuiz(20)}
-                                    sx={{ py: 2 }}
+                                    sx={{
+                                        py: 3,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 0.5,
+                                        textTransform: 'none',
+                                    }}
                                 >
-                                    Full Exam
-                                    <br />
-                                    <Typography variant="caption">20 Questions</Typography>
+                                    <Typography variant="h6" fontWeight="bold">
+                                        Full Exam
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        20 Questions
+                                    </Typography>
                                 </Button>
                             </Grid>
                         </Grid>
