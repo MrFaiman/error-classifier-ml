@@ -21,5 +21,10 @@ INPUT_EXAMPLES_PATH = os.path.join(DATA_DIR, 'input_examples.json')
 # MongoDB Configuration
 MONGODB_CONNECTION_STRING = os.getenv('MONGODB_CONNECTION_STRING', 'mongodb://localhost:27017/')
 
+# Redis Configuration
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+REDIS_CACHE_ENABLED = os.getenv('REDIS_CACHE_ENABLED', 'true').lower() == 'true'
+REDIS_CACHE_TTL = int(os.getenv('REDIS_CACHE_TTL', '3600'))  # 1 hour default
+
 # API configuration
 API_PORT = 3100

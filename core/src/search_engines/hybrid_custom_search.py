@@ -6,7 +6,8 @@ Now with persistent vector storage in MongoDB
 import os
 import glob
 import numpy as np
-from constants import DOCS_ROOT_DIR, DATA_DIR
+import hashlib
+from constants import DOCS_ROOT_DIR, DATA_DIR, REDIS_URL, REDIS_CACHE_ENABLED, REDIS_CACHE_TTL
 from algorithms import (
     TfidfVectorizer, 
     SimilaritySearch, 
@@ -15,6 +16,7 @@ from algorithms import (
     FeedbackLoop,
     MongoVectorStore
 )
+from cache import RedisCache
 
 
 class HybridCustomSearchEngine:
@@ -30,7 +32,9 @@ class HybridCustomSearchEngine:
     def __init__(self, docs_root_dir=None, max_features=5000, 
                  tfidf_weight=0.4, bm25_weight=0.6, k1=1.5, b=0.75,
                  use_vector_store=True,
-                 mongo_connection_string=None):
+                 mongo_connection_string=None,
+                 use_cache=None,
+                 redis_url=None):
         """
         Initialize hybrid custom search engine
         
@@ -43,6 +47,8 @@ class HybridCustomSearchEngine:
             b: BM25 length normalization parameter
             use_vector_store: Use MongoDB vector store for persistence (default: True)
             mongo_connection_string: MongoDB connection string (from environment)
+            use_cache: Enable Redis caching (None = use REDIS_CACHE_ENABLED env var)
+            redis_url: Redis connection URL (None = use REDIS_URL env var)
         """
         if docs_root_dir is None:
             docs_root_dir = DOCS_ROOT_DIR
@@ -111,6 +117,15 @@ class HybridCustomSearchEngine:
         )
         self.feedback_file = os.path.join(DATA_DIR, 'feedback_hybrid_custom.json')
         
+        # Initialize Redis cache
+        cache_enabled = use_cache if use_cache is not None else REDIS_CACHE_ENABLED
+        cache_url = redis_url or REDIS_URL
+        self.cache = RedisCache(
+            redis_url=cache_url,
+            ttl_seconds=REDIS_CACHE_TTL,
+            enabled=cache_enabled
+        )
+        
         # Load and index documents
         self._index_documents()
         
@@ -118,10 +133,15 @@ class HybridCustomSearchEngine:
         self._init_feedback_system()
     
     def __del__(self):
-        """Cleanup MongoDB connection"""
+        """Cleanup MongoDB and Redis connections"""
         if hasattr(self, 'vector_store') and self.vector_store:
             try:
                 self.vector_store.close()
+            except:
+                pass
+        if hasattr(self, 'cache') and self.cache:
+            try:
+                self.cache.close()
             except:
                 pass
     
@@ -156,6 +176,9 @@ class HybridCustomSearchEngine:
     def _index_documents(self):
         """Index all documentation files using both TF-IDF and BM25"""
         print("Indexing documentation with TF-IDF and BM25...")
+        
+        # Invalidate cache on reindex
+        self.cache.invalidate_on_doc_change()
         
         # Find all markdown files
         search_pattern = os.path.join(self.docs_root_dir, '**', '*.md')
@@ -287,6 +310,7 @@ class HybridCustomSearchEngine:
     def find_relevant_doc(self, query_text, top_k=5):
         """
         Find the most relevant document using hybrid TF-IDF + BM25 ranking
+        With Redis caching for fast repeated queries
         
         Args:
             query_text: Query string
@@ -298,10 +322,26 @@ class HybridCustomSearchEngine:
         if len(self.documents) == 0:
             raise ValueError("No documents indexed")
         
+        # Check cache first
+        cached_result = self.cache.get('search', query_text, method='HYBRID_CUSTOM')
+        if cached_result:
+            doc_path = cached_result['doc_path']
+            confidence = cached_result['confidence']
+            # Still record prediction for tracking
+            self.feedback_loop.record_prediction(
+                query_text, doc_path, confidence, 'HYBRID_CUSTOM'
+            )
+            return doc_path, confidence
+        
         # First check feedback system for known good matches
         feedback_result = self._check_feedback(query_text)
         if feedback_result:
             doc_path, confidence = feedback_result
+            # Cache the feedback result
+            self.cache.set('search', query_text, {
+                'doc_path': doc_path,
+                'confidence': confidence
+            }, method='HYBRID_CUSTOM')
             # Record prediction for tracking
             self.feedback_loop.record_prediction(
                 query_text, doc_path, confidence, 'HYBRID_CUSTOM'
@@ -345,6 +385,12 @@ class HybridCustomSearchEngine:
         adjusted_confidence = self.feedback_loop.adjust_confidence(
             query_text, doc_path, confidence, 'HYBRID_CUSTOM'
         )
+        
+        # Cache the result
+        self.cache.set('search', query_text, {
+            'doc_path': doc_path,
+            'confidence': adjusted_confidence
+        }, method='HYBRID_CUSTOM')
         
         # Record prediction
         self.feedback_loop.record_prediction(
@@ -506,8 +552,7 @@ class HybridCustomSearchEngine:
         """Get feedback loop statistics"""
         stats = self.feedback_loop.get_statistics()
         stats['feedback_documents'] = len(self.feedback_documents)
-        stats['engine_weights'] = self.feedback_loop.get_engine_weights()
-        return stats
+        stats['engine_weights'] = self.feedback_loop.get_engine_weights()        stats['cache_stats'] = self.cache.get_stats()        return stats
     
     def explain_ranking(self, query_text, doc_idx=None):
         """
