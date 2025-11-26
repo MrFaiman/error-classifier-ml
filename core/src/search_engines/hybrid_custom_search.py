@@ -183,8 +183,9 @@ class HybridCustomSearchEngine:
                     feature_names, idf_values = self.vector_store.get_vocabulary('tfidf')
                     if feature_names:
                         self.tfidf_vectorizer.vocabulary_ = {name: idx for idx, name in enumerate(feature_names)}
-                        self.tfidf_vectorizer.idf_ = idf_values
-                        self.tfidf_vectorizer.is_fitted = True
+                        self.tfidf_vectorizer.idf_values_ = idf_values
+                        self.tfidf_vectorizer.feature_names_ = feature_names
+                        self.tfidf_vectorizer.n_docs_ = len(self.doc_paths)
                     
                     # Load documents for BM25
                     for filepath in self.doc_paths:
@@ -242,8 +243,8 @@ class HybridCustomSearchEngine:
             
             # Save vocabulary
             if hasattr(self.tfidf_vectorizer, 'vocabulary_'):
-                feature_names = list(self.tfidf_vectorizer.vocabulary_.keys())
-                idf_values = self.tfidf_vectorizer.idf_
+                feature_names = self.tfidf_vectorizer.feature_names_
+                idf_values = self.tfidf_vectorizer.idf_values_
                 self.vector_store.save_vocabulary('tfidf', feature_names, idf_values)
             
             # Save metadata
