@@ -313,12 +313,15 @@ class HybridCustomSearchEngine:
         
         # Get TF-IDF scores
         query_vector = self.tfidf_vectorizer.transform([query_text])
-        tfidf_scores = self.similarity_search.find_similar(
-            query_vector, 
-            self.tfidf_matrix, 
-            top_k=len(self.documents)
-        )
-        tfidf_scores_array = np.array([score for _, score in tfidf_scores])
+        query_vector_1d = query_vector.flatten()
+        
+        # Temporarily set vectors in similarity search
+        self.similarity_search.vectors = self.tfidf_matrix
+        self.similarity_search.n_vectors = self.tfidf_matrix.shape[0]
+        self.similarity_search.dimension = self.tfidf_matrix.shape[1]
+        
+        tfidf_results = self.similarity_search.search(query_vector_1d, k=len(self.documents))
+        tfidf_scores_array = np.array([score for _, score, _ in tfidf_results])
         
         # Get BM25 scores
         bm25_scores_array = self.bm25.get_scores(query_text)
@@ -369,12 +372,15 @@ class HybridCustomSearchEngine:
         
         # Get TF-IDF scores
         query_vector = self.tfidf_vectorizer.transform([query_text])
-        tfidf_scores = self.similarity_search.find_similar(
-            query_vector, 
-            self.tfidf_matrix, 
-            top_k=len(self.documents)
-        )
-        tfidf_scores_array = np.array([score for _, score in tfidf_scores])
+        query_vector_1d = query_vector.flatten()
+        
+        # Temporarily set vectors in similarity search
+        self.similarity_search.vectors = self.tfidf_matrix
+        self.similarity_search.n_vectors = self.tfidf_matrix.shape[0]
+        self.similarity_search.dimension = self.tfidf_matrix.shape[1]
+        
+        tfidf_results = self.similarity_search.search(query_vector_1d, k=len(self.documents))
+        tfidf_scores_array = np.array([score for _, score, _ in tfidf_results])
         
         # Get BM25 scores
         bm25_scores_array = self.bm25.get_scores(query_text)
@@ -414,14 +420,19 @@ class HybridCustomSearchEngine:
         
         # Search feedback documents with both methods
         query_vector = self.feedback_tfidf_vectorizer.transform([query_text])
-        tfidf_results = self.similarity_search.find_similar(
-            query_vector,
-            self.feedback_tfidf_vectorizer.transform(self.feedback_documents),
-            top_k=1
-        )
+        query_vector_1d = query_vector.flatten()
+        feedback_matrix = self.feedback_tfidf_vectorizer.transform(self.feedback_documents)
+        
+        # Create temporary similarity search for feedback
+        feedback_search = SimilaritySearch(metric='cosine')
+        feedback_search.vectors = feedback_matrix
+        feedback_search.n_vectors = feedback_matrix.shape[0]
+        feedback_search.dimension = feedback_matrix.shape[1]
+        
+        tfidf_results = feedback_search.search(query_vector_1d, k=1)
         
         if tfidf_results:
-            idx, tfidf_score = tfidf_results[0]
+            idx, tfidf_score, _ = tfidf_results[0]
             bm25_scores = self.feedback_bm25.get_scores(query_text)
             
             if len(bm25_scores) > idx:
@@ -517,12 +528,15 @@ class HybridCustomSearchEngine:
         
         # Get scores
         query_vector = self.tfidf_vectorizer.transform([query_text])
-        tfidf_scores = self.similarity_search.find_similar(
-            query_vector, 
-            self.tfidf_matrix, 
-            top_k=len(self.documents)
-        )
-        tfidf_scores_array = np.array([score for _, score in tfidf_scores])
+        query_vector_1d = query_vector.flatten()
+        
+        # Temporarily set vectors in similarity search
+        self.similarity_search.vectors = self.tfidf_matrix
+        self.similarity_search.n_vectors = self.tfidf_matrix.shape[0]
+        self.similarity_search.dimension = self.tfidf_matrix.shape[1]
+        
+        tfidf_results = self.similarity_search.search(query_vector_1d, k=len(self.documents))
+        tfidf_scores_array = np.array([score for _, score, _ in tfidf_results])
         bm25_scores_array = self.bm25.get_scores(query_text)
         
         # Normalize
