@@ -646,6 +646,14 @@ def get_status():
             except:
                 pass
         
+        # Get feedback statistics
+        feedback_stats = {}
+        if hybrid_custom:
+            try:
+                feedback_stats = hybrid_custom.get_feedback_statistics()
+            except Exception as e:
+                print(f"[WARN] Could not get feedback stats: {e}")
+        
         healthy = custom_tfidf is not None or enhanced_custom is not None or hybrid_custom is not None
         
         methods_available = []
@@ -666,7 +674,8 @@ def get_status():
                 'custom_tfidf': custom_tfidf_corrections,
                 'enhanced_custom': enhanced_custom_corrections,
                 'hybrid_custom': hybrid_custom_corrections
-            }
+            },
+            'feedback_loop': feedback_stats
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

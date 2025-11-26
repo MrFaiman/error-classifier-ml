@@ -13,6 +13,7 @@ from .kmeans import KMeans, elbow_method
 from .text_processing import TextChunker, TextPreprocessor
 from .edit_distance import EditDistance, FuzzyMatcher, fuzzy_search
 from .bm25 import BM25, BM25Plus, BM25Okapi, compare_bm25_variants
+from .feedback_loop import FeedbackLoop
 
 __all__ = [
     # TF-IDF
@@ -37,4 +38,6 @@ __all__ = [
     'BM25Plus',
     'BM25Okapi',
     'compare_bm25_variants',
+    # Feedback Loop
+    'FeedbackLoop',
 ]

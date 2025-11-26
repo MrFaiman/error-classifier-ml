@@ -5,14 +5,15 @@ Combines TF-IDF, BM25, Cosine Similarity, and Fuzzy Matching
 import os
 import glob
 import numpy as np
-from constants import DOCS_ROOT_DIR
+from constants import DOCS_ROOT_DIR, DATA_DIR
 from custom_ml import (
     TfidfVectorizer, 
     SimilaritySearch, 
     ENGLISH_STOP_WORDS,
     BM25,
     EditDistance,
-    FuzzyMatcher
+    FuzzyMatcher,
+    FeedbackLoop
 )
 
 
@@ -79,8 +80,25 @@ class HybridCustomSearchEngine:
         self.feedback_documents = []
         self.feedback_paths = []
         
-        # Index documents
-        self._index_documents()
+        # Initialize feedback loop
+        self.feedback_loop = FeedbackLoop(
+            learning_rate=0.1,
+            confidence_boost=5.0,
+            confidence_penalty=10.0
+        )
+        self.feedback_file = os.path.join(DATA_DIR, 'feedback_hybrid_custom.json')
+        
+        # Load existing feedback
+        if os.path.exists(self.feedback_file):
+            try:
+                self.feedback_loop.load_from_file(self.feedback_file)
+                print(f"[OK] Loaded feedback data from {self.feedback_file}")
+            except Exception as e:
+                print(f"[WARN] Could not load feedback: {e}")
+        
+        # Load documents
+        self._load_documents()
+
         self._init_feedback_system()
     
     def _read_document(self, filepath):
@@ -186,9 +204,14 @@ class HybridCustomSearchEngine:
         if len(self.documents) == 0:
             raise ValueError("No documents indexed")
         
-        # First check feedback system
+        # First check feedback system for known good matches
         feedback_result = self._check_feedback(query_text)
         if feedback_result:
+            doc_path, confidence = feedback_result
+            # Record prediction for tracking
+            self.feedback_loop.record_prediction(
+                query_text, doc_path, confidence, 'HYBRID_CUSTOM'
+            )
             return feedback_result
         
         # Get TF-IDF scores
@@ -219,8 +242,19 @@ class HybridCustomSearchEngine:
         
         # Convert to confidence percentage (0-100)
         confidence = float(best_score * 100)
+        doc_path = self.doc_paths[best_idx]
         
-        return self.doc_paths[best_idx], confidence
+        # Adjust confidence based on feedback history
+        adjusted_confidence = self.feedback_loop.adjust_confidence(
+            query_text, doc_path, confidence, 'HYBRID_CUSTOM'
+        )
+        
+        # Record prediction
+        self.feedback_loop.record_prediction(
+            query_text, doc_path, adjusted_confidence, 'HYBRID_CUSTOM'
+        )
+        
+        return doc_path, adjusted_confidence
     
     def get_top_n(self, query_text, n=5):
         """
@@ -272,6 +306,12 @@ class HybridCustomSearchEngine:
     
     def _check_feedback(self, query_text):
         """Check if query matches learned feedback"""
+        # First, check the new feedback loop system
+        feedback_result = self.feedback_loop.get_best_document_for_query(query_text)
+        if feedback_result:
+            return feedback_result  # Returns (doc_path, confidence)
+        
+        # Fall back to old feedback system
         if not self.feedback_documents:
             return None
         
@@ -305,6 +345,31 @@ class HybridCustomSearchEngine:
             error_text: The error text that was misclassified
             correct_doc_path: The correct documentation path
         """
+        # Get the predicted document first
+        try:
+            predicted_doc, original_confidence = self.find_relevant_doc(error_text)
+        except:
+            predicted_doc = None
+            original_confidence = 0.0
+        
+        # Record feedback in the feedback loop
+        if predicted_doc:
+            feedback_result = self.feedback_loop.record_feedback(
+                error_text,
+                predicted_doc,
+                correct_doc_path,
+                original_confidence,
+                'HYBRID_CUSTOM'
+            )
+            
+            print(f"[Feedback] Recorded correction:")
+            print(f"  Query: {error_text[:50]}...")
+            print(f"  Predicted: {predicted_doc}")
+            print(f"  Actual: {correct_doc_path}")
+            print(f"  Success rate: {feedback_result['success_rate']:.2%}")
+            print(f"  Engine accuracy: {feedback_result['engine_accuracy']:.2%}")
+        
+        # Also add to old feedback system for backward compatibility
         self.feedback_documents.append(error_text)
         self.feedback_paths.append(correct_doc_path)
         
@@ -313,7 +378,15 @@ class HybridCustomSearchEngine:
             self.feedback_tfidf_vectorizer.fit_transform(self.feedback_documents)
             self.feedback_bm25.fit(self.feedback_documents)
         
-        print(f"[Feedback] Learned correction: {len(self.feedback_documents)} total corrections")
+        # Save feedback data
+        try:
+            self.feedback_loop.save_to_file(self.feedback_file)
+            print(f"[OK] Saved feedback data: {len(self.feedback_loop.feedback_history)} entries")
+        except Exception as e:
+            print(f"[WARN] Could not save feedback: {e}")
+        
+        print(f"[Feedback] Total corrections: {len(self.feedback_documents)}")
+
     
     def get_ranking_weights(self):
         """Get current ranking weights"""
@@ -323,6 +396,13 @@ class HybridCustomSearchEngine:
             'bm25_k1': self.bm25.k1,
             'bm25_b': self.bm25.b
         }
+    
+    def get_feedback_statistics(self):
+        """Get feedback loop statistics"""
+        stats = self.feedback_loop.get_statistics()
+        stats['feedback_documents'] = len(self.feedback_documents)
+        stats['engine_weights'] = self.feedback_loop.get_engine_weights()
+        return stats
     
     def explain_ranking(self, query_text, doc_idx=None):
         """
