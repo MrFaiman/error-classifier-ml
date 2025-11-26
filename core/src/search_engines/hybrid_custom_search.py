@@ -12,8 +12,6 @@ from algorithms import (
     SimilaritySearch, 
     ENGLISH_STOP_WORDS,
     BM25,
-    EditDistance,
-    FuzzyMatcher,
     FeedbackLoop,
     MongoVectorStore
 )

@@ -17,7 +17,6 @@ import ErrorIcon from '@mui/icons-material/Error';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import StorageIcon from '@mui/icons-material/Storage';
 import SchoolIcon from '@mui/icons-material/School';
-import SearchIcon from '@mui/icons-material/Search';
 
 function SystemHealthCard({ status }) {
     return (

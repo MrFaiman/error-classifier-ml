@@ -15,7 +15,6 @@ function SearchPage() {
     const [feedbackGiven, setFeedbackGiven] = useState(null);
     const [openCorrectionDialog, setOpenCorrectionDialog] = useState(false);
     const [feedbackSuccess, setFeedbackSuccess] = useState(null);
-    const [showComparison, setShowComparison] = useState(false);
     const [currentErrorMessage, setCurrentErrorMessage] = useState('');
 
     // Query for search engines comparison
