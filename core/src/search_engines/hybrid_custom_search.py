@@ -6,7 +6,7 @@ import os
 import glob
 import numpy as np
 from constants import DOCS_ROOT_DIR, DATA_DIR
-from custom_ml import (
+from algorithms import (
     TfidfVectorizer, 
     SimilaritySearch, 
     ENGLISH_STOP_WORDS,

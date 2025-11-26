@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import uuid
 from constants import DOCS_ROOT_DIR
-from custom_ml import TfidfVectorizer, SimilaritySearch, ENGLISH_STOP_WORDS
+from algorithms import TfidfVectorizer, SimilaritySearch, ENGLISH_STOP_WORDS
 
 
 class CustomTfidfSearchEngine:
