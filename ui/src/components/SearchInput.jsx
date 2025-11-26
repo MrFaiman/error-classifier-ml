@@ -37,6 +37,7 @@ function SearchInput({
                     >
                         <MenuItem value="CUSTOM_TFIDF">Custom TF-IDF (No Blackbox)</MenuItem>
                         <MenuItem value="ENHANCED_CUSTOM">Enhanced Custom (All ML Algorithms)</MenuItem>
+                        <MenuItem value="HYBRID_CUSTOM">Hybrid Custom (TF-IDF + BM25)</MenuItem>
                     </Select>
                 </FormControl>
             </Grid>

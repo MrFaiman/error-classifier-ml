@@ -6,8 +6,10 @@ Contains all custom classification/search methods for error documentation matchi
 
 from .custom_tfidf_search import CustomTfidfSearchEngine
 from .enhanced_custom_search import EnhancedCustomSearchEngine
+from .hybrid_custom_search import HybridCustomSearchEngine
 
 __all__ = [
     'CustomTfidfSearchEngine',
     'EnhancedCustomSearchEngine',
+    'HybridCustomSearchEngine',
 ]

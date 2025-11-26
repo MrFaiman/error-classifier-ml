@@ -12,6 +12,7 @@ from .similarity import (
 from .kmeans import KMeans, elbow_method
 from .text_processing import TextChunker, TextPreprocessor
 from .edit_distance import EditDistance, FuzzyMatcher, fuzzy_search
+from .bm25 import BM25, BM25Plus, BM25Okapi, compare_bm25_variants
 
 __all__ = [
     # TF-IDF
@@ -31,4 +32,9 @@ __all__ = [
     'EditDistance',
     'FuzzyMatcher',
     'fuzzy_search',
+    # BM25 Ranking
+    'BM25',
+    'BM25Plus',
+    'BM25Okapi',
+    'compare_bm25_variants',
 ]

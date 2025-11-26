@@ -12,7 +12,7 @@ import glob
 from datetime import datetime
 
 # Import custom classification modules
-from search_engines import CustomTfidfSearchEngine, EnhancedCustomSearchEngine
+from search_engines import CustomTfidfSearchEngine, EnhancedCustomSearchEngine, HybridCustomSearchEngine
 from constants import DOCS_ROOT_DIR, DATASET_PATH, API_PORT
 import numpy as np
 
@@ -23,6 +23,7 @@ CORS(app)
 print("Initializing custom ML search engines...")
 custom_tfidf = None
 enhanced_custom = None
+hybrid_custom = None
 
 try:
     custom_tfidf = CustomTfidfSearchEngine(docs_root_dir=DOCS_ROOT_DIR)
@@ -35,6 +36,12 @@ try:
     print("[OK] Enhanced Custom Search initialized (All Custom ML Algorithms)")
 except Exception as e:
     print(f"[ERROR] Enhanced Custom Search failed: {e}")
+
+try:
+    hybrid_custom = HybridCustomSearchEngine(docs_root_dir=DOCS_ROOT_DIR, tfidf_weight=0.4, bm25_weight=0.6)
+    print("[OK] Hybrid Custom Search initialized (TF-IDF + BM25 Ranking)")
+except Exception as e:
+    print(f"[ERROR] Hybrid Custom Search failed: {e}")
 
 
 def verify_and_fallback(doc_path, query_text, method):
@@ -154,6 +161,28 @@ def handle_multi_search(query_text):
         except Exception as e:
             print(f"Enhanced Custom Search failed: {e}")
     
+    # Try Hybrid Custom Search (TF-IDF + BM25)
+    if hybrid_custom:
+        try:
+            doc_path, confidence = hybrid_custom.find_relevant_doc(query_text)
+            confidence = float(confidence)
+            verified_path, fallback_conf, fallback_source, is_fallback = verify_and_fallback(
+                doc_path, query_text, 'HYBRID_CUSTOM'
+            )
+            if is_fallback and fallback_conf is not None:
+                confidence = fallback_conf
+            
+            results.append({
+                'method': 'HYBRID_CUSTOM',
+                'doc_path': verified_path,
+                'confidence': confidence,
+                'source': 'HYBRID_CUSTOM (TF-IDF + BM25)',
+                'root_cause': '',
+                'is_fallback': is_fallback
+            })
+        except Exception as e:
+            print(f"Hybrid Custom Search failed: {e}")
+    
     if not results:
         return jsonify({'error': 'No classification methods available'}), 503
     
@@ -229,8 +258,16 @@ def classify_error():
             confidence = float(confidence)
             source = 'ENHANCED_CUSTOM (All Custom ML)'
 
+        elif method == 'HYBRID_CUSTOM':
+            if not hybrid_custom:
+                return jsonify({'error': 'Hybrid Custom Search not available'}), 503
+            
+            doc_path, confidence = hybrid_custom.find_relevant_doc(error_message)
+            confidence = float(confidence)
+            source = 'HYBRID_CUSTOM (TF-IDF + BM25)'
+
         else:
-            return jsonify({'error': f'Invalid method: {method}. Valid methods: CUSTOM_TFIDF, ENHANCED_CUSTOM'}), 400
+            return jsonify({'error': f'Invalid method: {method}. Valid methods: CUSTOM_TFIDF, ENHANCED_CUSTOM, HYBRID_CUSTOM'}), 400
 
         # Verify path exists and try fallbacks if needed
         verified_path, fallback_conf, fallback_source, is_fallback = verify_and_fallback(
@@ -562,8 +599,13 @@ def teach_correction():
                 return jsonify({'error': 'Enhanced Custom Search not available'}), 503
             enhanced_custom.teach_correction(error_text, correct_doc_path)
         
+        elif engine == 'HYBRID_CUSTOM':
+            if not hybrid_custom:
+                return jsonify({'error': 'Hybrid Custom Search not available'}), 503
+            hybrid_custom.teach_correction(error_text, correct_doc_path)
+        
         else:
-            return jsonify({'error': f'Unknown engine: {engine}. Valid engines: CUSTOM_TFIDF, ENHANCED_CUSTOM'}), 400
+            return jsonify({'error': f'Unknown engine: {engine}. Valid engines: CUSTOM_TFIDF, ENHANCED_CUSTOM, HYBRID_CUSTOM'}), 400
         
         return jsonify({
             'message': 'Correction learned successfully',
@@ -584,6 +626,7 @@ def get_status():
     try:
         custom_tfidf_corrections = 0
         enhanced_custom_corrections = 0
+        hybrid_custom_corrections = 0
         
         if custom_tfidf:
             try:
@@ -597,23 +640,32 @@ def get_status():
             except:
                 pass
         
-        healthy = custom_tfidf is not None or enhanced_custom is not None
+        if hybrid_custom:
+            try:
+                hybrid_custom_corrections = len(hybrid_custom.feedback_documents)
+            except:
+                pass
+        
+        healthy = custom_tfidf is not None or enhanced_custom is not None or hybrid_custom is not None
         
         methods_available = []
         if custom_tfidf:
             methods_available.append('CUSTOM_TFIDF')
         if enhanced_custom:
             methods_available.append('ENHANCED_CUSTOM')
+        if hybrid_custom:
+            methods_available.append('HYBRID_CUSTOM')
         
         model_status = f"{', '.join(methods_available)}" if methods_available else "No methods loaded"
         
         return jsonify({
             'healthy': healthy,
             'model_status': model_status,
-            'learned_corrections': custom_tfidf_corrections + enhanced_custom_corrections,
+            'learned_corrections': custom_tfidf_corrections + enhanced_custom_corrections + hybrid_custom_corrections,
             'corrections_by_engine': {
                 'custom_tfidf': custom_tfidf_corrections,
-                'enhanced_custom': enhanced_custom_corrections
+                'enhanced_custom': enhanced_custom_corrections,
+                'hybrid_custom': hybrid_custom_corrections
             }
         })
     except Exception as e:
