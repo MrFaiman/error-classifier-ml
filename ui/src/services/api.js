@@ -80,3 +80,19 @@ export const getSearchEnginesComparison = async () => {
     const response = await api.get('/search-engines-comparison');
     return response.data;
 };
+
+// Config API
+export const getConfig = async () => {
+    const response = await api.get('/config');
+    return response.data;
+};
+
+export const getServices = async () => {
+    const response = await api.get('/services');
+    return response.data;
+};
+
+export const getCategories = async () => {
+    const response = await api.get('/categories');
+    return response.data;
+};

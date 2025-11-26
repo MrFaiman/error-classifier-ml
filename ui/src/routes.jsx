@@ -6,6 +6,7 @@ import SearchPage from './pages/SearchPage';
 import ManageDocsPage from './pages/ManageDocsPage';
 import ManageDatasetPage from './pages/ManageDatasetPage';
 import StatusPage from './pages/StatusPage';
+import ExamModePage from './pages/ExamModePage';
 
 // Root route with layout
 const rootRoute = createRootRoute({
@@ -45,12 +46,19 @@ const statusRoute = createRoute({
     component: StatusPage,
 });
 
+const examRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/exam',
+    component: ExamModePage,
+});
+
 // Create the route tree
 const routeTree = rootRoute.addChildren([
     indexRoute,
     docsRoute,
     datasetRoute,
     statusRoute,
+    examRoute,
 ]);
 
 // Create and export the router
