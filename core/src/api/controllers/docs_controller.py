@@ -51,18 +51,33 @@ def get_doc_content(doc_path):
     if not doc_path:
         return None, 'path parameter is required'
     
-    # Security check: ensure the path is within DOCS_ROOT_DIR
-    abs_path = os.path.abspath(doc_path)
-    abs_docs_root = os.path.abspath(DOCS_ROOT_DIR)
-    
-    if not abs_path.startswith(abs_docs_root) and not os.path.exists(doc_path):
-        return None, 'Invalid document path'
-    
-    if not os.path.exists(doc_path):
-        return None, 'Document not found'
-    
+    # Security: Normalize the path to prevent path traversal
     try:
-        with open(doc_path, 'r', encoding='utf-8') as f:
+        # Remove any dangerous patterns
+        if '..' in doc_path or doc_path.startswith('/'):
+            return None, 'Invalid document path: path traversal detected'
+        
+        # Get absolute paths for comparison
+        abs_path = os.path.abspath(doc_path)
+        abs_docs_root = os.path.abspath(DOCS_ROOT_DIR)
+        
+        # Security check: ensure the resolved path is within DOCS_ROOT_DIR
+        if not abs_path.startswith(abs_docs_root):
+            return None, 'Access denied: path outside allowed directory'
+        
+        # Verify file exists and is a file (not directory)
+        if not os.path.exists(abs_path):
+            return None, 'Document not found'
+        
+        if not os.path.isfile(abs_path):
+            return None, 'Invalid path: not a file'
+        
+        # Additional security: only allow .md files
+        if not abs_path.endswith('.md'):
+            return None, 'Invalid file type: only .md files allowed'
+        
+        # Read file content
+        with open(abs_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
         return {
@@ -70,8 +85,9 @@ def get_doc_content(doc_path):
             'content': content,
             'size': len(content)
         }, None
+        
     except Exception as e:
-        return None, str(e)
+        return None, f'Error reading file: {str(e)}'
 
 
 def update_doc(filepath, content):
@@ -89,12 +105,27 @@ def update_doc(filepath, content):
         return False, 'path and content are required'
     
     try:
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
+        # Security: Prevent path traversal
+        if '..' in filepath or filepath.startswith('/'):
+            return False, 'Invalid path: path traversal detected'
+        
+        abs_path = os.path.abspath(filepath)
+        abs_docs_root = os.path.abspath(DOCS_ROOT_DIR)
+        
+        # Ensure path is within DOCS_ROOT_DIR
+        if not abs_path.startswith(abs_docs_root):
+            return False, 'Access denied: path outside allowed directory'
+        
+        # Only allow .md files
+        if not abs_path.endswith('.md'):
+            return False, 'Invalid file type: only .md files allowed'
+        
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        with open(abs_path, 'w', encoding='utf-8') as f:
             f.write(content)
         return True, 'Documentation updated successfully'
     except Exception as e:
-        return False, str(e)
+        return False, f'Error updating file: {str(e)}'
 
 
 def create_doc(service, category, content):
@@ -113,15 +144,33 @@ def create_doc(service, category, content):
         return None, 'service, category, and content are required'
     
     try:
-        filepath = os.path.join(DOCS_ROOT_DIR, service.lower(), f"{category}.md")
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        # Security: Sanitize inputs to prevent path traversal
+        if '..' in service or '..' in category or '/' in service or '\\' in service:
+            return None, 'Invalid service name: contains dangerous characters'
         
-        with open(filepath, 'w', encoding='utf-8') as f:
+        if not category.replace('_', '').replace('-', '').isalnum():
+            return None, 'Invalid category: must be alphanumeric with - or _'
+        
+        # Ensure service and category are lowercase and safe
+        service_safe = service.lower().strip()
+        category_safe = category.strip()
+        
+        filepath = os.path.join(DOCS_ROOT_DIR, service_safe, f"{category_safe}.md")
+        abs_path = os.path.abspath(filepath)
+        abs_docs_root = os.path.abspath(DOCS_ROOT_DIR)
+        
+        # Final security check
+        if not abs_path.startswith(abs_docs_root):
+            return None, 'Access denied: path outside allowed directory'
+        
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        
+        with open(abs_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
         return filepath, 'Documentation created successfully'
     except Exception as e:
-        return None, str(e)
+        return None, f'Error creating file: {str(e)}'
 
 
 def delete_doc(doc_id):
@@ -135,6 +184,10 @@ def delete_doc(doc_id):
         tuple: (success, message)
     """
     try:
+        # Validate doc_id
+        if not isinstance(doc_id, int) or doc_id < 0:
+            return False, 'Invalid document ID'
+        
         pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
         files = glob.glob(pattern, recursive=True)
         
@@ -142,8 +195,19 @@ def delete_doc(doc_id):
             return False, 'Document not found'
         
         filepath = files[doc_id]
-        os.remove(filepath)
+        abs_path = os.path.abspath(filepath)
+        abs_docs_root = os.path.abspath(DOCS_ROOT_DIR)
+        
+        # Security: Ensure the file is within DOCS_ROOT_DIR
+        if not abs_path.startswith(abs_docs_root):
+            return False, 'Access denied: path outside allowed directory'
+        
+        # Only allow deleting .md files
+        if not abs_path.endswith('.md'):
+            return False, 'Invalid file type: only .md files can be deleted'
+        
+        os.remove(abs_path)
         
         return True, 'Documentation deleted successfully'
     except Exception as e:
-        return False, str(e)
+        return False, f'Error deleting file: {str(e)}'

@@ -23,15 +23,32 @@ def get_doc_content():
     """Get content of a specific documentation file"""
     try:
         doc_path = request.args.get('path')
+        
+        # Additional security logging
+        if doc_path:
+            # Log suspicious patterns
+            if '..' in doc_path or doc_path.startswith('/') or '\\' in doc_path:
+                print(f"[SECURITY] Suspicious path requested: {doc_path} from {request.remote_addr}")
+        
         result, error = docs_controller.get_doc_content(doc_path)
         
         if error:
-            status_code = 400 if 'required' in error else 404 if 'not found' in error.lower() else 400
+            # Determine appropriate status code
+            if 'traversal' in error.lower() or 'access denied' in error.lower():
+                status_code = 403  # Forbidden
+            elif 'required' in error:
+                status_code = 400  # Bad Request
+            elif 'not found' in error.lower():
+                status_code = 404  # Not Found
+            else:
+                status_code = 400  # Bad Request
+            
             return jsonify({'error': error}), status_code
         
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"[ERROR] doc-content exception: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @bp.route('/docs/<int:doc_id>', methods=['PUT'])
