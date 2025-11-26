@@ -552,7 +552,9 @@ class HybridCustomSearchEngine:
         """Get feedback loop statistics"""
         stats = self.feedback_loop.get_statistics()
         stats['feedback_documents'] = len(self.feedback_documents)
-        stats['engine_weights'] = self.feedback_loop.get_engine_weights()        stats['cache_stats'] = self.cache.get_stats()        return stats
+        stats['engine_weights'] = self.feedback_loop.get_engine_weights()
+        stats['cache_stats'] = self.cache.get_stats()
+        return stats
     
     def explain_ranking(self, query_text, doc_idx=None):
         """

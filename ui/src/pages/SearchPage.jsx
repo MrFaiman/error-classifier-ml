@@ -16,6 +16,7 @@ function SearchPage() {
     const [openCorrectionDialog, setOpenCorrectionDialog] = useState(false);
     const [feedbackSuccess, setFeedbackSuccess] = useState(null);
     const [currentErrorMessage, setCurrentErrorMessage] = useState('');
+    const [responseTime, setResponseTime] = useState(null);
 
     // Query for search engines comparison
     const { data: comparisonData } = useQuery({
@@ -26,7 +27,13 @@ function SearchPage() {
 
     // Mutation for classification
     const classifyMutation = useMutation({
-        mutationFn: classifyError,
+        mutationFn: async (data) => {
+            const startTime = performance.now();
+            const response = await classifyError(data);
+            const endTime = performance.now();
+            setResponseTime(endTime - startTime);
+            return response;
+        },
         onSuccess: (data) => {
             setResult(data);
             setError(null);
@@ -36,6 +43,7 @@ function SearchPage() {
         onError: (err) => {
             setError(err.response?.data?.error || 'Failed to classify error');
             setResult(null);
+            setResponseTime(null);
         },
     });
 
@@ -143,6 +151,7 @@ function SearchPage() {
                             onNegativeFeedback={handleNegativeFeedback}
                             onCopyPath={handleCopyPath}
                             getConfidenceColor={getConfidenceColor}
+                            responseTime={responseTime}
                         />
 
                         {result.multi_search && result.all_results && result.all_results.length > 0 && (

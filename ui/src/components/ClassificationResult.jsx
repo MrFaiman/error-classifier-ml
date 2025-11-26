@@ -14,6 +14,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
+import SpeedIcon from '@mui/icons-material/Speed';
 
 function ClassificationResult({
     result,
@@ -22,6 +23,7 @@ function ClassificationResult({
     onNegativeFeedback,
     onCopyPath,
     getConfidenceColor,
+    responseTime,
 }) {
     if (!result) {
         return null;
@@ -34,6 +36,15 @@ function ClassificationResult({
                     Classification Result
                     {result.multi_search && (
                         <Chip label="Multi-Engine" color="success" size="small" sx={{ ml: 2 }} />
+                    )}
+                    {responseTime && (
+                        <Chip 
+                            icon={<SpeedIcon />}
+                            label={`${responseTime.toFixed(0)}ms`} 
+                            color={responseTime < 10 ? 'success' : responseTime < 50 ? 'primary' : 'default'}
+                            size="small" 
+                            sx={{ ml: 1 }} 
+                        />
                     )}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />

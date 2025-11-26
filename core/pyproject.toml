@@ -10,6 +10,7 @@ dependencies = [
     "flask-cors",
     "pymongo>=4.15.4",
     "dotenv>=0.9.9",
+    "redis>=7.1.0",
 ]
 
 [dependency-groups]
