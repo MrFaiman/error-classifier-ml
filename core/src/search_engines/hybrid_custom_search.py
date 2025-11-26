@@ -105,9 +105,10 @@ class HybridCustomSearchEngine:
         
         print(f"[OK] Feedback loop initialized with SQLite database: {db_path}")
         
-        # Load documents
-        self._load_documents()
-
+        # Load and index documents
+        self._index_documents()
+        
+        # Initialize feedback system
         self._init_feedback_system()
     
     def _read_document(self, filepath):
