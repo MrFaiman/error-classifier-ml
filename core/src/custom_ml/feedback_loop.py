@@ -8,6 +8,7 @@ import os
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 from collections import defaultdict
+from .feedback_database import FeedbackDatabase
 
 
 class FeedbackLoop:
@@ -27,7 +28,7 @@ class FeedbackLoop:
     - Exponential moving averages
     """
     
-    def __init__(self, learning_rate=0.1, confidence_boost=5.0, confidence_penalty=10.0):
+    def __init__(self, learning_rate=0.1, confidence_boost=5.0, confidence_penalty=10.0, db_path=None):
         """
         Initialize feedback loop
         
@@ -35,11 +36,17 @@ class FeedbackLoop:
             learning_rate: How quickly to adapt (0-1, default 0.1)
             confidence_boost: Points to add for correct predictions
             confidence_penalty: Points to subtract for incorrect predictions
+            db_path: Path to SQLite database (optional, falls back to in-memory)
         """
         self.learning_rate = learning_rate
         self.confidence_boost = confidence_boost
         self.confidence_penalty = confidence_penalty
         
+        # Initialize SQLite database
+        self.db = FeedbackDatabase(db_path) if db_path else None
+        self.use_database = db_path is not None
+        
+        # In-memory cache for backward compatibility and fast access
         # Track query -> document accuracy
         self.query_doc_stats = defaultdict(lambda: {
             'correct': 0,
@@ -72,12 +79,45 @@ class FeedbackLoop:
             'weight': 1.0  # Dynamic weight for ensemble
         })
         
-        # Store feedback history
+        # Store feedback history (in-memory only for compatibility)
         self.feedback_history = []
+        
+        # Load existing data from database if available
+        if self.use_database:
+            self._sync_from_database()
         
     def _normalize_query(self, query: str) -> str:
         """Normalize query for pattern matching"""
         return ' '.join(query.lower().split())
+    
+    def _sync_from_database(self):
+        """Sync in-memory cache from database"""
+        if not self.use_database:
+            return
+        
+        # Load engine stats
+        engine_stats_list = self.db.get_all_engine_stats()
+        for stat in engine_stats_list:
+            self.engine_stats[stat['engine']] = {
+                'predictions': stat['total_predictions'],
+                'correct': stat['correct_predictions'],
+                'incorrect': stat['incorrect_predictions'],
+                'accuracy': stat['accuracy'],
+                'weight': stat['weight']
+            }
+        
+        # Load recent corrections for in-memory cache
+        recent = self.db.get_recent_corrections(limit=1000)
+        for correction in recent:
+            self.feedback_history.append({
+                'timestamp': correction['timestamp'],
+                'query': correction['query'],
+                'predicted_doc': correction['predicted_doc'],
+                'actual_doc': correction['actual_doc'],
+                'is_correct': bool(correction['is_correct']),
+                'original_confidence': correction['original_confidence'],
+                'engine': correction['engine']
+            })
     
     def _compute_query_similarity(self, query1: str, query2: str) -> float:
         """Compute simple Jaccard similarity between queries"""
@@ -104,9 +144,16 @@ class FeedbackLoop:
             engine: Which search engine made the prediction
         """
         normalized_query = self._normalize_query(query)
-        key = f"{normalized_query}||{predicted_doc}"
         
-        # Update stats
+        # Record to database if available
+        if self.use_database:
+            self.db.record_prediction(
+                query, normalized_query, predicted_doc,
+                confidence, confidence, engine
+            )
+        
+        # Update in-memory cache
+        key = f"{normalized_query}||{predicted_doc}"
         self.query_doc_stats[key]['total'] += 1
         self.doc_stats[predicted_doc]['times_shown'] += 1
         self.engine_stats[engine]['predictions'] += 1
@@ -118,6 +165,7 @@ class FeedbackLoop:
             (pattern['avg_confidence'] * (pattern['count'] - 1) + confidence) / 
             pattern['count']
         )
+
         
     def record_feedback(self, query: str, predicted_doc: str, 
                        actual_doc: str, original_confidence: float,
@@ -138,7 +186,14 @@ class FeedbackLoop:
         normalized_query = self._normalize_query(query)
         is_correct = (predicted_doc == actual_doc)
         
-        # Update query-document stats
+        # Record to database if available
+        if self.use_database:
+            self.db.record_correction(
+                query, normalized_query, predicted_doc, actual_doc,
+                is_correct, original_confidence, engine
+            )
+        
+        # Update in-memory cache
         key = f"{normalized_query}||{predicted_doc}"
         stats = self.query_doc_stats[key]
         
@@ -221,36 +276,55 @@ class FeedbackLoop:
             Adjusted confidence score (0-100)
         """
         normalized_query = self._normalize_query(query)
-        key = f"{normalized_query}||{doc}"
-        
         adjusted = original_confidence
         
-        # Adjust based on query-document history
-        if key in self.query_doc_stats:
-            stats = self.query_doc_stats[key]
-            if stats['total'] > 0:
-                success_rate = stats['success_rate']
-                
-                # Boost or penalize based on success rate
+        # Try database first for accurate stats
+        if self.use_database:
+            # Get query-doc stats from database
+            qd_stats = self.db.get_query_doc_stats(normalized_query, doc)
+            if qd_stats and qd_stats['total_count'] > 0:
+                success_rate = qd_stats['success_rate']
                 if success_rate > 0.7:
                     adjusted += self.confidence_boost * (success_rate - 0.5)
                 elif success_rate < 0.3:
                     adjusted -= self.confidence_penalty * (0.5 - success_rate)
-        
-        # Adjust based on document accuracy
-        if doc in self.doc_stats:
-            doc_accuracy = self.doc_stats[doc]['accuracy']
-            if self.doc_stats[doc]['times_shown'] >= 3:  # Need enough data
-                # Slight adjustment based on document's overall accuracy
-                adjusted += (doc_accuracy - 0.5) * 5
-        
-        # Adjust based on engine performance
-        if engine in self.engine_stats:
-            engine_accuracy = self.engine_stats[engine]['accuracy']
-            total_predictions = self.engine_stats[engine]['predictions']
-            if total_predictions >= 5:  # Need enough data
-                # Adjust based on engine reliability
-                adjusted *= (0.8 + 0.4 * engine_accuracy)  # Scale: 0.8x to 1.2x
+            
+            # Get document stats from database
+            doc_stats = self.db.get_document_stats(doc)
+            if doc_stats and doc_stats['times_shown'] >= 3:
+                adjusted += (doc_stats['accuracy'] - 0.5) * 5
+            
+            # Get engine stats from database
+            eng_stats = self.db.get_engine_stats(engine)
+            if eng_stats and eng_stats['total_predictions'] >= 5:
+                adjusted *= (0.8 + 0.4 * eng_stats['accuracy'])
+        else:
+            # Fallback to in-memory cache
+            key = f"{normalized_query}||{doc}"
+            
+            # Adjust based on query-document history
+            if key in self.query_doc_stats:
+                stats = self.query_doc_stats[key]
+                if stats['total'] > 0:
+                    success_rate = stats['success_rate']
+                    
+                    if success_rate > 0.7:
+                        adjusted += self.confidence_boost * (success_rate - 0.5)
+                    elif success_rate < 0.3:
+                        adjusted -= self.confidence_penalty * (0.5 - success_rate)
+            
+            # Adjust based on document accuracy
+            if doc in self.doc_stats:
+                doc_accuracy = self.doc_stats[doc]['accuracy']
+                if self.doc_stats[doc]['times_shown'] >= 3:
+                    adjusted += (doc_accuracy - 0.5) * 5
+            
+            # Adjust based on engine performance
+            if engine in self.engine_stats:
+                engine_accuracy = self.engine_stats[engine]['accuracy']
+                total_predictions = self.engine_stats[engine]['predictions']
+                if total_predictions >= 5:
+                    adjusted *= (0.8 + 0.4 * engine_accuracy)
         
         # Check for similar successful queries
         similar_boost = self._get_similar_query_boost(normalized_query, doc)
@@ -309,6 +383,13 @@ class FeedbackLoop:
         """
         normalized_query = self._normalize_query(query)
         
+        # Try database first
+        if self.use_database:
+            result = self.db.get_best_document_for_query(normalized_query)
+            if result:
+                return result
+        
+        # Fallback to in-memory patterns
         # Check exact match in patterns
         if normalized_query in self.query_patterns:
             pattern = self.query_patterns[normalized_query]
@@ -337,6 +418,11 @@ class FeedbackLoop:
     
     def get_statistics(self) -> Dict:
         """Get comprehensive feedback statistics"""
+        # Use database stats if available
+        if self.use_database:
+            return self.db.get_statistics()
+        
+        # Fallback to in-memory stats
         total_feedback = len(self.feedback_history)
         correct_feedback = sum(1 for f in self.feedback_history if f['is_correct'])
         
@@ -348,7 +434,8 @@ class FeedbackLoop:
             'unique_documents': len(self.doc_stats),
             'engine_stats': dict(self.engine_stats),
             'top_documents': self._get_top_documents(5),
-            'learning_rate': self.learning_rate
+            'learning_rate': self.learning_rate,
+            'using_database': False
         }
     
     def _get_top_documents(self, n: int = 5) -> List[Dict]:
@@ -367,23 +454,28 @@ class FeedbackLoop:
         return docs[:n]
     
     def save_to_file(self, filepath: str):
-        """Save feedback data to JSON file"""
-        data = {
-            'query_doc_stats': dict(self.query_doc_stats),
-            'doc_stats': dict(self.doc_stats),
-            'query_patterns': dict(self.query_patterns),
-            'engine_stats': dict(self.engine_stats),
-            'feedback_history': self.feedback_history[-1000:],  # Keep last 1000
-            'config': {
-                'learning_rate': self.learning_rate,
-                'confidence_boost': self.confidence_boost,
-                'confidence_penalty': self.confidence_penalty
+        """Save feedback data to JSON file (export from database if available)"""
+        if self.use_database:
+            # Export from database
+            self.db.export_to_json(filepath)
+        else:
+            # Save from in-memory data
+            data = {
+                'query_doc_stats': dict(self.query_doc_stats),
+                'doc_stats': dict(self.doc_stats),
+                'query_patterns': dict(self.query_patterns),
+                'engine_stats': dict(self.engine_stats),
+                'feedback_history': self.feedback_history[-1000:],  # Keep last 1000
+                'config': {
+                    'learning_rate': self.learning_rate,
+                    'confidence_boost': self.confidence_boost,
+                    'confidence_penalty': self.confidence_penalty
+                }
             }
-        }
-        
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=2)
+            
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            with open(filepath, 'w') as f:
+                json.dump(data, f, indent=2)
     
     def load_from_file(self, filepath: str):
         """Load feedback data from JSON file"""

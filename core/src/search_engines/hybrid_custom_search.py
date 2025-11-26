@@ -80,21 +80,17 @@ class HybridCustomSearchEngine:
         self.feedback_documents = []
         self.feedback_paths = []
         
-        # Initialize feedback loop
+        # Initialize feedback loop with SQLite database
+        db_path = os.path.join(DATA_DIR, 'feedback_hybrid_custom.db')
         self.feedback_loop = FeedbackLoop(
             learning_rate=0.1,
             confidence_boost=5.0,
-            confidence_penalty=10.0
+            confidence_penalty=10.0,
+            db_path=db_path
         )
         self.feedback_file = os.path.join(DATA_DIR, 'feedback_hybrid_custom.json')
         
-        # Load existing feedback
-        if os.path.exists(self.feedback_file):
-            try:
-                self.feedback_loop.load_from_file(self.feedback_file)
-                print(f"[OK] Loaded feedback data from {self.feedback_file}")
-            except Exception as e:
-                print(f"[WARN] Could not load feedback: {e}")
+        print(f"[OK] Feedback loop initialized with SQLite database: {db_path}")
         
         # Load documents
         self._load_documents()
