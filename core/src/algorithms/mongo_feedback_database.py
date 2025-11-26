@@ -77,17 +77,15 @@ class MongoFeedbackDatabase:
         """Normalize query for pattern matching"""
         return ' '.join(query.lower().split())
     
-    def record_prediction(self, query: str, predicted_doc: str, 
-                         confidence: float, engine: str,
-                         adjusted_confidence: Optional[float] = None) -> str:
+    def record_prediction(self, query: str, query_normalized: str,
+                         predicted_doc: str, confidence: float,
+                         adjusted_confidence: float, engine: str) -> str:
         """
         Record a prediction made by the system
         
         Returns:
             prediction_id (MongoDB ObjectId as string)
         """
-        query_normalized = self._normalize_query(query)
-        
         doc = {
             'query': query,
             'query_normalized': query_normalized,
@@ -102,11 +100,11 @@ class MongoFeedbackDatabase:
         result = self.predictions_col.insert_one(doc)
         return str(result.inserted_id)
     
-    def record_correction(self, query: str, predicted_doc: str, actual_doc: str,
+    def record_correction(self, query: str, query_normalized: str,
+                         predicted_doc: str, actual_doc: str,
                          is_correct: bool, original_confidence: float,
                          engine: str, prediction_id: Optional[str] = None):
         """Record user correction/feedback"""
-        query_normalized = self._normalize_query(query)
         
         # Insert correction
         correction_doc = {

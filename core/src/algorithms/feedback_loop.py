@@ -8,14 +8,7 @@ import os
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 from collections import defaultdict
-try:
-    from .feedback_database import FeedbackDatabase
-except ImportError:
-    FeedbackDatabase = None
-try:
-    from .mongo_feedback_database import MongoFeedbackDatabase
-except ImportError:
-    MongoFeedbackDatabase = None
+from .mongo_feedback_database import MongoFeedbackDatabase
 
 
 class FeedbackLoop:
@@ -36,7 +29,7 @@ class FeedbackLoop:
     """
     
     def __init__(self, learning_rate=0.1, confidence_boost=5.0, confidence_penalty=10.0, 
-                 db_path=None, mongo_connection=None):
+                 mongo_connection=None):
         """
         Initialize feedback loop
         
@@ -44,33 +37,23 @@ class FeedbackLoop:
             learning_rate: How quickly to adapt (0-1, default 0.1)
             confidence_boost: Points to add for correct predictions
             confidence_penalty: Points to subtract for incorrect predictions
-            db_path: Path to SQLite database (optional, falls back to in-memory)
-            mongo_connection: MongoDB connection string (alternative to SQLite)
+            mongo_connection: MongoDB connection string
         """
         self.learning_rate = learning_rate
         self.confidence_boost = confidence_boost
         self.confidence_penalty = confidence_penalty
         
-        # Initialize database (MongoDB preferred, SQLite fallback, in-memory last resort)
+        # Initialize database (MongoDB only)
         self.db = None
         self.use_database = False
         
-        if mongo_connection and MongoFeedbackDatabase:
+        if mongo_connection:
             try:
                 self.db = MongoFeedbackDatabase(mongo_connection)
                 self.use_database = True
                 print(f"[OK] Feedback database using MongoDB")
             except Exception as e:
                 print(f"[WARNING] MongoDB connection failed: {e}")
-                self.db = None
-        
-        if not self.db and db_path and FeedbackDatabase:
-            try:
-                self.db = FeedbackDatabase(db_path)
-                self.use_database = True
-                print(f"[OK] Feedback database using SQLite: {db_path}")
-            except Exception as e:
-                print(f"[WARNING] SQLite connection failed: {e}")
                 self.db = None
         
         # In-memory cache for backward compatibility and fast access

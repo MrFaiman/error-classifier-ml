@@ -23,4 +23,3 @@ htmlcov/
 
 # Docker
 .dockerignore
-data/*.db

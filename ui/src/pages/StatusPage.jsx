@@ -88,17 +88,26 @@ function StatusPage() {
                                                 <AutoAwesomeIcon color="primary" />
                                             </ListItemIcon>
                                             <ListItemText 
-                                                primary="Multi-Engine Search"
-                                                secondary="Aggregates results from Vector DB and Semantic Search"
+                                                primary="Hybrid Custom Search Engine"
+                                                secondary="TF-IDF + BM25 probabilistic ranking with adaptive feedback loop"
                                             />
                                         </ListItem>
                                         <ListItem>
                                             <ListItemIcon>
-                                                <DescriptionIcon color="primary" />
+                                                <StorageIcon color="primary" />
                                             </ListItemIcon>
                                             <ListItemText 
-                                                primary="LangChain Document Chunking"
-                                                secondary="500-char chunks with 50-char overlap for better vectorization"
+                                                primary="MongoDB Vector Store"
+                                                secondary="Persistent vector storage with automatic reindexing on document changes"
+                                            />
+                                        </ListItem>
+                                        <ListItem>
+                                            <ListItemIcon>
+                                                <SchoolIcon color="primary" />
+                                            </ListItemIcon>
+                                            <ListItemText 
+                                                primary="Reinforcement Learning"
+                                                secondary="Learns from user feedback to improve confidence over time"
                                             />
                                         </ListItem>
                                         <ListItem>
@@ -106,17 +115,8 @@ function StatusPage() {
                                                 <SearchIcon color="primary" />
                                             </ListItemIcon>
                                             <ListItemText 
-                                                primary="Hybrid Search (BM25 + Semantic)"
-                                                secondary="Combines keyword-based BM25 with semantic embeddings for better accuracy"
-                                            />
-                                        </ListItem>
-                                        <ListItem>
-                                            <ListItemIcon>
-                                                <SearchIcon color="primary" />
-                                            </ListItemIcon>
-                                            <ListItemText 
-                                                primary="Message-Only Classification"
-                                                secondary="No service or category input required"
+                                                primary="100% Custom ML Implementation"
+                                                secondary="No blackbox libraries - complete algorithmic transparency"
                                             />
                                         </ListItem>
                                     </List>
@@ -128,23 +128,19 @@ function StatusPage() {
                                     <Grid item xs={12} md={6}>
                                         <Box sx={{ mb: 2 }}>
                                             <Typography variant="body2" color="text.secondary" gutterBottom>
-                                                Classification Methods
+                                                Search Engine
                                             </Typography>
-                                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                                <Chip label="Vector Database" color="primary" size="small" />
-                                                <Chip label="Semantic Search" color="primary" size="small" />
-                                                <Chip label="Hybrid Search" color="primary" size="small" />
-                                            </Box>
+                                            <Chip label={status.model_status || 'Not Available'} color="primary" size="small" />
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12} md={6}>
                                         <Box sx={{ mb: 2 }}>
                                             <Typography variant="body2" color="text.secondary" gutterBottom>
-                                                Vector DB Status
+                                                System Status
                                             </Typography>
                                             <Chip
-                                                label={status.vector_db_status}
-                                                color={status.vector_db_status === 'Ready' ? 'success' : 'error'}
+                                                label={status.healthy ? 'Operational' : 'Degraded'}
+                                                color={status.healthy ? 'success' : 'error'}
                                             />
                                         </Box>
                                     </Grid>
@@ -153,27 +149,30 @@ function StatusPage() {
                         </Card>
 
                         <Grid container spacing={3}>
-                            <Grid item xs={12} md={6}>
+                            <Grid item xs={12} md={4}>
                                 <Card>
                                     <CardContent>
                                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                                             <StorageIcon color="primary" sx={{ mr: 1 }} />
-                                            <Typography variant="h6">Vector Database</Typography>
+                                            <Typography variant="h6">MongoDB</Typography>
                                         </Box>
                                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                            ChromaDB with dual collections for training data and user feedback
+                                            Persistent vector storage and feedback database
                                         </Typography>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                             <Typography variant="body2" color="text.secondary">
-                                                Total Records
+                                                Collections
                                             </Typography>
-                                            <Chip label={status.vector_db_records} color="primary" size="small" />
+                                            <Chip label="10" color="primary" size="small" />
                                         </Box>
+                                        <Typography variant="caption" color="text.secondary" display="block">
+                                            4 vector + 6 feedback collections
+                                        </Typography>
                                     </CardContent>
                                 </Card>
                             </Grid>
 
-                            <Grid item xs={12} md={6}>
+                            <Grid item xs={12} md={4}>
                                 <Card>
                                     <CardContent>
                                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -181,14 +180,47 @@ function StatusPage() {
                                             <Typography variant="h6">Learned Knowledge</Typography>
                                         </Box>
                                         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                            System learns from user corrections via feedback collection
+                                            System learns from user corrections via adaptive feedback
                                         </Typography>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                             <Typography variant="body2" color="text.secondary">
-                                                User Corrections
+                                                Total Corrections
                                             </Typography>
-                                            <Chip label={status.learned_corrections} color="secondary" size="small" />
+                                            <Chip label={status.learned_corrections || 0} color="secondary" size="small" />
                                         </Box>
+                                        {status.feedback_loop && (
+                                            <Typography variant="caption" color="text.secondary" display="block">
+                                                {status.feedback_loop.total_predictions || 0} predictions tracked
+                                            </Typography>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+
+                            <Grid item xs={12} md={4}>
+                                <Card>
+                                    <CardContent>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                            <AutoAwesomeIcon color="success" sx={{ mr: 1 }} />
+                                            <Typography variant="h6">ML Features</Typography>
+                                        </Box>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                            Custom implementations with full transparency
+                                        </Typography>
+                                        <List dense sx={{ p: 0 }}>
+                                            <ListItem sx={{ px: 0, py: 0.5 }}>
+                                                <Typography variant="caption">• TF-IDF Vectorization</Typography>
+                                            </ListItem>
+                                            <ListItem sx={{ px: 0, py: 0.5 }}>
+                                                <Typography variant="caption">• BM25 Ranking</Typography>
+                                            </ListItem>
+                                            <ListItem sx={{ px: 0, py: 0.5 }}>
+                                                <Typography variant="caption">• Cosine Similarity</Typography>
+                                            </ListItem>
+                                            <ListItem sx={{ px: 0, py: 0.5 }}>
+                                                <Typography variant="caption">• Query Pattern Learning</Typography>
+                                            </ListItem>
+                                        </List>
                                     </CardContent>
                                 </Card>
                             </Grid>

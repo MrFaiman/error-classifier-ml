@@ -33,7 +33,7 @@ class HybridCustomSearchEngine:
     def __init__(self, docs_root_dir=None, max_features=5000, 
                  tfidf_weight=0.4, bm25_weight=0.6, k1=1.5, b=0.75,
                  use_vector_store=True,
-                 mongo_connection_string='mongodb://root:3l91PRi23Mlx@faiman:27017/'):
+                 mongo_connection_string=None):
         """
         Initialize hybrid custom search engine
         
@@ -45,7 +45,7 @@ class HybridCustomSearchEngine:
             k1: BM25 term frequency saturation parameter
             b: BM25 length normalization parameter
             use_vector_store: Use MongoDB vector store for persistence (default: True)
-            mongo_connection_string: MongoDB connection string
+            mongo_connection_string: MongoDB connection string (from environment)
         """
         if docs_root_dir is None:
             docs_root_dir = DOCS_ROOT_DIR
@@ -62,7 +62,7 @@ class HybridCustomSearchEngine:
             self.bm25_weight = bm25_weight / total_weight
         
         # Initialize MongoDB vector store if enabled
-        if self.use_vector_store:
+        if self.use_vector_store and mongo_connection_string:
             try:
                 self.vector_store = MongoVectorStore(
                     mongo_connection_string,
@@ -76,6 +76,8 @@ class HybridCustomSearchEngine:
                 self.use_vector_store = False
         else:
             self.vector_store = None
+            if not mongo_connection_string:
+                print(f"[INFO] No MongoDB connection string provided - vector store disabled")
         
         # Initialize TF-IDF
         self.tfidf_vectorizer = TfidfVectorizer(
@@ -103,13 +105,11 @@ class HybridCustomSearchEngine:
         self.feedback_documents = []
         self.feedback_paths = []
         
-        # Initialize feedback loop (MongoDB preferred, SQLite fallback)
-        db_path = os.path.join(DATA_DIR, 'feedback_hybrid_custom.db')
+        # Initialize feedback loop (MongoDB only)
         self.feedback_loop = FeedbackLoop(
             learning_rate=0.1,
             confidence_boost=5.0,
             confidence_penalty=10.0,
-            db_path=db_path,
             mongo_connection=mongo_connection_string if use_vector_store else None
         )
         self.feedback_file = os.path.join(DATA_DIR, 'feedback_hybrid_custom.json')

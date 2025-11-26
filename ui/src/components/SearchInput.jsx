@@ -27,43 +27,6 @@ function SearchInput({
 }) {
     return (
         <Grid container spacing={3}>
-            <Grid item xs={12} sm={8}>
-                <FormControl fullWidth disabled={multiSearch}>
-                    <InputLabel>Classification Method</InputLabel>
-                    <Select
-                        value={method}
-                        label="Classification Method"
-                        onChange={(e) => onMethodChange(e.target.value)}
-                    >
-                        <MenuItem value="CUSTOM_TFIDF">Custom TF-IDF (No Blackbox)</MenuItem>
-                        <MenuItem value="ENHANCED_CUSTOM">Enhanced Custom (All ML Algorithms)</MenuItem>
-                        <MenuItem value="HYBRID_CUSTOM">Hybrid Custom (TF-IDF + BM25)</MenuItem>
-                    </Select>
-                </FormControl>
-            </Grid>
-
-            <Grid item xs={12} sm={4}>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            checked={multiSearch}
-                            onChange={(e) => onMultiSearchChange(e.target.checked)}
-                            color="primary"
-                        />
-                    }
-                    label={
-                        <Box>
-                            <Typography variant="body2" fontWeight="medium">
-                                Multi-Engine Search
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                Aggregate all methods
-                            </Typography>
-                        </Box>
-                    }
-                />
-            </Grid>
-
             <Grid item xs={12}>
                 <TextField
                     fullWidth

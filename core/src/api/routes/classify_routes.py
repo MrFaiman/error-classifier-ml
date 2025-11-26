@@ -15,7 +15,7 @@ def classify_error():
     try:
         data = request.json
         error_message = data.get('error_message', '') or data.get('raw_input_snippet', '')
-        method = data.get('method', 'CUSTOM_TFIDF')
+        method = data.get('method', 'HYBRID_CUSTOM')
         multi_search = data.get('multi_search', False)
 
         if not error_message:
@@ -70,7 +70,7 @@ def teach_correction():
         data = request.json
         error_text = data.get('error_text', '')
         correct_doc_path = data.get('correct_doc_path', '')
-        engine = data.get('engine', 'custom_tfidf')
+        engine = data.get('engine', 'HYBRID_CUSTOM')
 
         if not error_text or not correct_doc_path:
             return jsonify({'error': 'error_text and correct_doc_path are required'}), 400

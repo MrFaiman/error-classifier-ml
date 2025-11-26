@@ -14,9 +14,7 @@ from .text_processing import TextChunker, TextPreprocessor
 from .edit_distance import EditDistance, FuzzyMatcher, fuzzy_search
 from .bm25 import BM25, BM25Plus, BM25Okapi, compare_bm25_variants
 from .feedback_loop import FeedbackLoop
-from .feedback_database import FeedbackDatabase
 from .mongo_feedback_database import MongoFeedbackDatabase
-from .vector_store import VectorStore
 from .mongo_vector_store import MongoVectorStore
 
 __all__ = [
@@ -44,9 +42,7 @@ __all__ = [
     'compare_bm25_variants',
     # Feedback Loop
     'FeedbackLoop',
-    'FeedbackDatabase',
     'MongoFeedbackDatabase',
-    # Vector Store
-    'VectorStore',
+    # Vector stores
     'MongoVectorStore',
 ]

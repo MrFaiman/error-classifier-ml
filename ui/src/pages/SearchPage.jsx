@@ -40,8 +40,6 @@ import SearchInput from '../components/SearchInput';
 
 function SearchPage() {
     const [errorInput, setErrorInput] = useState('');
-    const [method, setMethod] = useState('CUSTOM_TFIDF');
-    const [multiSearch, setMultiSearch] = useState(true); // Auto-enabled by default
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
     const [feedbackGiven, setFeedbackGiven] = useState(null);
@@ -101,8 +99,8 @@ function SearchPage() {
 
         classifyMutation.mutate({
             error_message: errorInput,
-            method: method,
-            multi_search: multiSearch,
+            method: 'HYBRID_CUSTOM',
+            multi_search: false,
         });
     };
 
@@ -122,18 +120,10 @@ function SearchPage() {
             return;
         }
 
-        // Determine which engine to teach based on classification method used
-        let engine = method;
-        if (method === 'MULTI_SEARCH') {
-            // For multi-search, teach all engines
-            // Start with the primary result's method if available
-            engine = result?.method || 'VECTOR_DB';
-        }
-
         teachMutation.mutate({
             error_text: errorInput,
             correct_doc_path: correctPath,
-            engine: engine,
+            engine: 'HYBRID_CUSTOM',
         });
     };
 
@@ -159,30 +149,26 @@ function SearchPage() {
         <Container maxWidth="lg">
             <Box sx={{ my: 4 }}>
                 <Typography variant="h4" component="h1" gutterBottom align="center">
-                    Error Classification Search
+                    Error Classification
                 </Typography>
                 <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 4 }}>
-                    Enter an error message to find the relevant documentation
+                    Enter an error message to find the relevant documentation using Hybrid Search (TF-IDF + BM25)
                 </Typography>
 
                 <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
                     <SearchInput
                         errorInput={errorInput}
                         onErrorInputChange={setErrorInput}
-                        method={method}
-                        onMethodChange={setMethod}
-                        multiSearch={multiSearch}
-                        onMultiSearchChange={setMultiSearch}
                         onSearch={handleSearch}
                         isSearching={classifyMutation.isPending}
                     />
                 </Paper>
 
-                {/* Search Engines Comparison Section */}
+                {/* Search Engine Info Section */}
                 <Paper elevation={2} sx={{ p: 3, mb: 4, bgcolor: 'background.default' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="h6" color="primary">
-                            Search Engine Comparison
+                            About Hybrid Custom Search
                         </Typography>
                         <Button
                             size="small"
@@ -193,133 +179,44 @@ function SearchPage() {
                         </Button>
                     </Box>
 
-                    {showComparison && comparisonData && (
+                    {showComparison && comparisonData?.engines && comparisonData.engines[0] && (
                         <Box>
-                            <Grid container spacing={2} sx={{ mb: 3 }}>
-                                {comparisonData.engines.map((engine) => (
-                                    <Grid item xs={12} md={4} key={engine.id}>
-                                        <Card variant="outlined" sx={{ height: '100%' }}>
-                                            <CardContent>
-                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                                    <Typography variant="h6" component="div" gutterBottom>
-                                                        {engine.name}
-                                                    </Typography>
-                                                    <Chip
-                                                        label={engine.available ? 'Available' : 'Unavailable'}
-                                                        color={engine.available ? 'success' : 'default'}
-                                                        size="small"
-                                                    />
-                                                </Box>
-                                                
-                                                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                                                    {engine.technology}
-                                                </Typography>
+                            <Card variant="outlined">
+                                <CardContent>
+                                    <Typography variant="body2" sx={{ mb: 2 }}>
+                                        {comparisonData.engines[0].description}
+                                    </Typography>
 
-                                                <Typography variant="body2" sx={{ mb: 2 }}>
-                                                    {engine.description}
-                                                </Typography>
+                                    <Divider sx={{ my: 1.5 }} />
 
-                                                <Divider sx={{ my: 1.5 }} />
-
-                                                <Typography variant="subtitle2" color="primary" gutterBottom>
-                                                    Strengths:
-                                                </Typography>
-                                                <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 1.5 }}>
-                                                    {engine.strengths.map((strength, idx) => (
-                                                        <Typography component="li" variant="caption" key={idx} sx={{ mb: 0.5 }}>
-                                                            {strength}
-                                                        </Typography>
-                                                    ))}
-                                                </Box>
-
-                                                <Typography variant="subtitle2" color="warning.main" gutterBottom>
-                                                    Best For:
-                                                </Typography>
-                                                <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 0 }}>
-                                                    {engine.best_for.map((use, idx) => (
-                                                        <Typography component="li" variant="caption" key={idx} sx={{ mb: 0.5 }}>
-                                                            {use}
-                                                        </Typography>
-                                                    ))}
-                                                </Box>
-                                            </CardContent>
-                                        </Card>
-                                    </Grid>
-                                ))}
-                            </Grid>
-
-                            <Divider sx={{ my: 3 }} />
-
-                            <Typography variant="h6" gutterBottom>
-                                Feature Comparison Matrix
-                            </Typography>
-                            <Box sx={{ overflowX: 'auto' }}>
-                                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', mt: 2 }}>
-                                    <Box component="thead">
-                                        <Box component="tr">
-                                            {comparisonData.comparison_matrix.headers.map((header, idx) => (
-                                                <Box
-                                                    component="th"
-                                                    key={idx}
-                                                    sx={{
-                                                        textAlign: idx === 0 ? 'left' : 'center',
-                                                        p: 1.5,
-                                                        borderBottom: '2px solid',
-                                                        borderColor: 'divider',
-                                                        fontWeight: 'bold',
-                                                        bgcolor: 'action.hover'
-                                                    }}
-                                                >
-                                                    {header}
-                                                </Box>
-                                            ))}
-                                        </Box>
-                                    </Box>
-                                    <Box component="tbody">
-                                        {comparisonData.comparison_matrix.rows.map((row, rowIdx) => (
-                                            <Box component="tr" key={rowIdx} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-                                                {row.map((cell, cellIdx) => (
-                                                    <Box
-                                                        component="td"
-                                                        key={cellIdx}
-                                                        sx={{
-                                                            textAlign: cellIdx === 0 ? 'left' : 'center',
-                                                            p: 1.5,
-                                                            borderBottom: '1px solid',
-                                                            borderColor: 'divider',
-                                                            fontWeight: cellIdx === 0 ? 'medium' : 'normal'
-                                                        }}
-                                                    >
-                                                        {cell}
-                                                    </Box>
-                                                ))}
-                                            </Box>
+                                    <Typography variant="subtitle2" color="primary" gutterBottom>
+                                        Strengths:
+                                    </Typography>
+                                    <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 1.5 }}>
+                                        {comparisonData.engines[0].strengths.map((strength, idx) => (
+                                            <Typography component="li" variant="caption" key={idx} sx={{ mb: 0.5 }}>
+                                                {strength}
+                                            </Typography>
                                         ))}
                                     </Box>
-                                </Box>
-                            </Box>
 
-                            <Box sx={{ mt: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
-                                <Typography variant="subtitle2" color="info.dark" gutterBottom>
-                                    Recommendations:
+                                    <Typography variant="subtitle2" color="warning.main" gutterBottom>
+                                        Best For:
+                                    </Typography>
+                                    <Box component="ul" sx={{ pl: 2, mt: 0.5, mb: 0 }}>
+                                        {comparisonData.engines[0].best_for.map((use, idx) => (
+                                            <Typography component="li" variant="caption" key={idx} sx={{ mb: 0.5 }}>
+                                                {use}
+                                            </Typography>
+                                        ))}
+                                    </Box>
+                                </CardContent>
+                            </Card>
+
+                            <Box sx={{ mt: 2, p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
+                                <Typography variant="body2" color="success.dark" fontWeight="medium">
+                                    ✅ 100% custom implementation - no blackbox libraries!
                                 </Typography>
-                                <Grid container spacing={1}>
-                                    <Grid item xs={12} sm={6} md={4}>
-                                        <Typography variant="caption" display="block">
-                                            <strong>General Use:</strong> {comparisonData.recommendations.general_use}
-                                        </Typography>
-                                    </Grid>
-                                    <Grid item xs={12} sm={6} md={4}>
-                                        <Typography variant="caption" display="block">
-                                            <strong>Production:</strong> {comparisonData.recommendations.production_deployment}
-                                        </Typography>
-                                    </Grid>
-                                    <Grid item xs={12} sm={6} md={4}>
-                                        <Typography variant="caption" display="block">
-                                            <strong>Technical Queries:</strong> {comparisonData.recommendations.technical_queries}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
                             </Box>
                         </Box>
                     )}
@@ -416,13 +313,9 @@ function SearchPage() {
 
                                 <Grid item xs={12} sm={4}>
                                     <Typography variant="body2" color="text.secondary">
-                                        {result.multi_search ? 'Methods Used' : 'Method'}
+                                        Method
                                     </Typography>
-                                    <Chip 
-                                        label={result.multi_search ? result.total_methods : method} 
-                                        color="secondary" 
-                                        sx={{ mt: 0.5 }} 
-                                    />
+                                    <Chip label="HYBRID_CUSTOM" color="secondary" sx={{ mt: 0.5 }} />
                                 </Grid>
                             </Grid>
 
