@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Feedback Loop system implements **reinforcement learning** to improve classification confidence over time. It learns from user corrections and automatically adjusts confidence scores based on historical accuracy.
+The Feedback Loop system implements **reinforcement learning** to improve classification confidence over time. It learns from user corrections and automatically adjusts confidence scores based on historical accuracy. All feedback data is stored persistently in MongoDB.
 
 ## Key Features
 
@@ -29,9 +29,10 @@ The Feedback Loop system implements **reinforcement learning** to improve classi
 - Enables intelligent ensemble weighting
 
 ### 5. **Persistent Learning**
-- Saves feedback data to JSON file
-- Loads previous learning on startup
-- Maintains history of up to 1000 recent corrections
+- Saves feedback data to MongoDB
+- Persists across server restarts
+- Maintains complete history of corrections and predictions
+- Supports queries and analytics
 
 ## How It Works
 
@@ -271,8 +272,8 @@ hybrid_custom.teach_correction(error_text, correct_doc_path)
 # Automatically:
 # 1. Records feedback (correct/incorrect)
 # 2. Updates success rates
-# 3. Saves to persistent storage
-# 4. Updates old feedback system (backward compat)
+# 3. Saves to MongoDB
+# 4. Updates feedback system
 ```
 
 ## Benefits
@@ -304,24 +305,31 @@ hybrid_custom.teach_correction(error_text, correct_doc_path)
 
 ## File Storage
 
-Feedback data is persisted to:
-```
-ml/data/feedback_hybrid_custom.json
-```
+Feedback data is persisted to MongoDB:
 
-Contains:
-- Query-document success rates
-- Document accuracy statistics
-- Query pattern learning
-- Engine performance metrics
-- Recent feedback history (last 1000)
+**Database**: `error_classifier` (configurable)
+
+**Collections**:
+- `predictions`: All predictions made by the system
+- `corrections`: User feedback (correct/incorrect)
+- `query_doc_stats`: Success rates per query-document pair
+- `engine_stats`: Performance metrics per search engine
+- `document_stats`: Accuracy rates per document
+- `query_patterns`: Learned query patterns
+
+**Configuration**:
+```bash
+# Set in core/.env
+MONGODB_CONNECTION_STRING=mongodb://localhost:27017/
+MONGODB_DATABASE=error_classifier
+```
 
 ## Testing
 
 Run the test suite:
 ```bash
-cd ml
-python src/custom_ml/feedback_loop.py
+cd core
+python src/algorithms/feedback_loop.py
 ```
 
 Expected output:
@@ -335,7 +343,7 @@ Testing Feedback Loop System
 4. Testing Best Document Lookup...
 5. Engine Weights (for ensemble)...
 6. Overall Statistics...
-7. Testing Save/Load...
+7. Testing MongoDB persistence...
 
 ✅ All feedback loop tests completed!
 ```
@@ -348,13 +356,13 @@ Testing Feedback Loop System
 - Adjust parameters based on performance
 
 ### 2. **Persist Regularly**
-- Feedback is auto-saved after each correction
-- Backup feedback JSON file periodically
-- Can replay corrections from history if needed
+- Feedback is auto-saved to MongoDB after each correction
+- MongoDB handles persistence and backups
+- Can query historical data for analytics
 
 ### 3. **Monitor Statistics**
 - Check `/api/status` endpoint regularly
-- Look for engines with low accuracy
+- Query MongoDB collections for detailed insights
 - Investigate documents with poor performance
 
 ### 4. **Handle Edge Cases**
@@ -378,6 +386,6 @@ Potential improvements:
 
 ## Summary
 
-The Feedback Loop system transforms the error classifier from a **static model** into an **adaptive, self-improving system**. It learns from every user interaction, automatically adjusting confidence scores and improving accuracy over time—all with complete algorithmic transparency and no blackbox libraries.
+The Feedback Loop system transforms the error classifier from a **static model** into an **adaptive, self-improving system**. It learns from every user interaction, automatically adjusting confidence scores and improving accuracy over time. All data is persistently stored in MongoDB for long-term learning and analytics.
 
-**Key Achievement**: 100% custom reinforcement learning implementation!
+**Key Achievement**: Reinforcement learning with persistent MongoDB storage!
