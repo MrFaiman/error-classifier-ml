@@ -2,9 +2,7 @@
 Config Controller
 Provides system configuration data
 """
-import os
-import glob
-from constants import DOCS_ROOT_DIR
+from utils import get_all_doc_files, get_services_and_categories
 
 
 def get_system_config():
@@ -61,28 +59,9 @@ def get_system_config():
     ]
     
     # Get documentation statistics
-    doc_count = 0
-    services = set()
-    categories = set()
-    
-    try:
-        pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
-        files = glob.glob(pattern, recursive=True)
-        doc_count = len(files)
-        
-        for filepath in files:
-            parts = filepath.replace('\\', '/').split('/')
-            try:
-                services_idx = parts.index('services')
-                if services_idx + 2 < len(parts):
-                    service = parts[services_idx + 1]
-                    category = parts[services_idx + 2].replace('.md', '')
-                    services.add(service)
-                    categories.add(category)
-            except (ValueError, IndexError):
-                pass
-    except Exception as e:
-        print(f"[WARN] Could not scan documentation: {e}")
+    files = get_all_doc_files()
+    doc_count = len(files)
+    services, categories, _ = get_services_and_categories()
     
     # MongoDB collections info
     mongodb_info = {
@@ -128,24 +107,7 @@ def get_available_services():
     Returns:
         list: Available service names
     """
-    services = set()
-    
-    try:
-        pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
-        files = glob.glob(pattern, recursive=True)
-        
-        for filepath in files:
-            parts = filepath.replace('\\', '/').split('/')
-            try:
-                services_idx = parts.index('services')
-                if services_idx + 1 < len(parts):
-                    service = parts[services_idx + 1]
-                    services.add(service)
-            except (ValueError, IndexError):
-                pass
-    except Exception as e:
-        print(f"[WARN] Could not scan services: {e}")
-    
+    services, _, _ = get_services_and_categories()
     return sorted(list(services))
 
 
@@ -156,31 +118,5 @@ def get_available_categories():
     Returns:
         dict: Categories grouped by service
     """
-    categories_by_service = {}
-    
-    try:
-        pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
-        files = glob.glob(pattern, recursive=True)
-        
-        for filepath in files:
-            parts = filepath.replace('\\', '/').split('/')
-            try:
-                services_idx = parts.index('services')
-                if services_idx + 2 < len(parts):
-                    service = parts[services_idx + 1]
-                    category = parts[services_idx + 2].replace('.md', '')
-                    
-                    if service not in categories_by_service:
-                        categories_by_service[service] = []
-                    
-                    categories_by_service[service].append(category)
-            except (ValueError, IndexError):
-                pass
-    except Exception as e:
-        print(f"[WARN] Could not scan categories: {e}")
-    
-    # Sort categories for each service
-    for service in categories_by_service:
-        categories_by_service[service] = sorted(categories_by_service[service])
-    
+    _, _, categories_by_service = get_services_and_categories()
     return categories_by_service

@@ -3,53 +3,12 @@ Quiz Controller
 Generates quiz questions about error classifications
 """
 import random
-import os
-import glob
-from constants import DOCS_ROOT_DIR
+from utils import get_all_error_categories_with_metadata
 
 
 def _get_all_error_categories():
     """Get all available error categories from documentation files"""
-    pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
-    files = glob.glob(pattern, recursive=True)
-    
-    categories = []
-    for filepath in files:
-        parts = filepath.replace('\\', '/').split('/')
-        try:
-            services_idx = parts.index('services')
-            if services_idx + 2 < len(parts):
-                service = parts[services_idx + 1]
-                category = parts[services_idx + 2].replace('.md', '')
-                
-                # Read description from file
-                description = ""
-                try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        # Extract description section
-                        lines = content.split('\n')
-                        in_description = False
-                        for line in lines:
-                            if line.strip().startswith('## Description'):
-                                in_description = True
-                            elif line.strip().startswith('##') and in_description:
-                                break
-                            elif in_description and line.strip():
-                                description += line.strip() + " "
-                except:
-                    pass
-                
-                categories.append({
-                    'service': service,
-                    'category': category,
-                    'description': description.strip(),
-                    'file_path': filepath
-                })
-        except (ValueError, IndexError):
-            continue
-    
-    return categories
+    return get_all_error_categories_with_metadata()
 
 
 def _generate_error_scenario(category_info):
