@@ -27,7 +27,7 @@ EXPOSE 5000
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
-ENV FLASK_APP=src/api_server.py
+ENV FLASK_APP=src/server.py
 
 # Run the Flask server
-CMD ["python", "src/api_server.py"]
+CMD ["python", "src/server.py"]

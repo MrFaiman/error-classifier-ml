@@ -1,7 +1,7 @@
 services:
   backend:
     build:
-      context: ../ml
+      context: ../core
       dockerfile: Dockerfile
     container_name: error-classifier-backend
     ports:
