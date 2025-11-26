@@ -35,18 +35,32 @@ import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DescriptionIcon from '@mui/icons-material/Description';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useForm } from '@tanstack/react-form';
 import { classifyError, teachCorrection, getDocContent, getSearchEnginesComparison } from '../services/api';
 import SearchInput from '../components/SearchInput';
 
 function SearchPage() {
-    const [errorInput, setErrorInput] = useState('');
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
     const [feedbackGiven, setFeedbackGiven] = useState(null);
     const [openCorrectionDialog, setOpenCorrectionDialog] = useState(false);
-    const [correctPath, setCorrectPath] = useState('');
     const [feedbackSuccess, setFeedbackSuccess] = useState(null);
     const [showComparison, setShowComparison] = useState(false);
+    const [currentErrorMessage, setCurrentErrorMessage] = useState('');
+
+    // TanStack Form for correction dialog
+    const correctionForm = useForm({
+        defaultValues: {
+            correctPath: '',
+        },
+        onSubmit: async ({ value }) => {
+            teachMutation.mutate({
+                error_text: currentErrorMessage,
+                correct_doc_path: value.correctPath,
+                engine: 'HYBRID_CUSTOM',
+            });
+        },
+    });
 
     // Query for search engines comparison
     const { data: comparisonData } = useQuery({
@@ -76,7 +90,7 @@ function SearchPage() {
         onSuccess: () => {
             setFeedbackSuccess('Correction saved! The system will learn from this.');
             setOpenCorrectionDialog(false);
-            setCorrectPath('');
+            correctionForm.reset();
         },
         onError: (err) => {
             setError(err.response?.data?.error || 'Failed to save correction');
@@ -91,14 +105,10 @@ function SearchPage() {
         retry: 1,
     });
 
-    const handleSearch = () => {
-        if (!errorInput.trim()) {
-            setError('Please enter an error message');
-            return;
-        }
-
+    const handleSearch = (errorMessage) => {
+        setCurrentErrorMessage(errorMessage);
         classifyMutation.mutate({
-            error_message: errorInput,
+            error_message: errorMessage,
             method: 'HYBRID_CUSTOM',
             multi_search: false,
         });
@@ -114,22 +124,9 @@ function SearchPage() {
         setOpenCorrectionDialog(true);
     };
 
-    const handleSubmitCorrection = () => {
-        if (!correctPath.trim()) {
-            setError('Please enter the correct documentation path');
-            return;
-        }
-
-        teachMutation.mutate({
-            error_text: errorInput,
-            correct_doc_path: correctPath,
-            engine: 'HYBRID_CUSTOM',
-        });
-    };
-
     const handleCloseCorrectionDialog = () => {
         setOpenCorrectionDialog(false);
-        setCorrectPath('');
+        correctionForm.reset();
         setFeedbackGiven(null);
     };
 
@@ -157,9 +154,7 @@ function SearchPage() {
 
                 <Paper elevation={3} sx={{ p: 4, mb: 4 }}>
                     <SearchInput
-                        errorInput={errorInput}
-                        onErrorInputChange={setErrorInput}
-                        onSearch={handleSearch}
+                        onSubmit={handleSearch}
                         isSearching={classifyMutation.isPending}
                     />
                 </Paper>
@@ -464,25 +459,57 @@ function SearchPage() {
                 <Dialog open={openCorrectionDialog} onClose={handleCloseCorrectionDialog} maxWidth="sm" fullWidth>
                     <DialogTitle>Provide Correct Documentation Path</DialogTitle>
                     <DialogContent>
-                        <Box sx={{ mt: 2 }}>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                                Help us improve! Please enter the correct documentation path for this error.
-                            </Typography>
-                            <TextField
-                                fullWidth
-                                label="Correct Documentation Path"
-                                placeholder="e.g., dataset/docs/services/logitrack/SECURITY_ALERT.md"
-                                value={correctPath}
-                                onChange={(e) => setCorrectPath(e.target.value)}
-                                sx={{ mt: 2 }}
-                                helperText="The system will learn from your correction"
-                            />
-                        </Box>
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                correctionForm.handleSubmit();
+                            }}
+                            id="correction-form"
+                        >
+                            <Box sx={{ mt: 2 }}>
+                                <Typography variant="body2" color="text.secondary" gutterBottom>
+                                    Help us improve! Please enter the correct documentation path for this error.
+                                </Typography>
+                                <correctionForm.Field
+                                    name="correctPath"
+                                    validators={{
+                                        onChange: ({ value }) =>
+                                            !value || value.trim().length === 0
+                                                ? 'Please enter the correct documentation path'
+                                                : undefined,
+                                    }}
+                                >
+                                    {(field) => (
+                                        <TextField
+                                            fullWidth
+                                            label="Correct Documentation Path"
+                                            placeholder="e.g., dataset/docs/services/logitrack/SECURITY_ALERT.md"
+                                            value={field.state.value}
+                                            onChange={(e) => field.handleChange(e.target.value)}
+                                            onBlur={field.handleBlur}
+                                            error={field.state.meta.errors.length > 0}
+                                            helperText={
+                                                field.state.meta.errors[0] ||
+                                                'The system will learn from your correction'
+                                            }
+                                            sx={{ mt: 2 }}
+                                        />
+                                    )}
+                                </correctionForm.Field>
+                            </Box>
+                        </form>
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={handleCloseCorrectionDialog}>Cancel</Button>
-                        <Button onClick={handleSubmitCorrection} variant="contained" color="primary">
-                            Submit Correction
+                        <Button
+                            type="submit"
+                            form="correction-form"
+                            variant="contained"
+                            color="primary"
+                            disabled={teachMutation.isPending}
+                        >
+                            {teachMutation.isPending ? 'Submitting...' : 'Submit Correction'}
                         </Button>
                     </DialogActions>
                 </Dialog>
