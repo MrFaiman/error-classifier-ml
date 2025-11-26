@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Card,
     CardContent,
@@ -13,6 +13,24 @@ import SchoolIcon from '@mui/icons-material/School';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 export function MongoDBCard() {
+    const [mongoInfo, setMongoInfo] = useState({
+        collections: 10,
+        vector_collections: 4,
+        feedback_collections: 6,
+        description: 'Persistent vector storage and feedback database'
+    });
+
+    useEffect(() => {
+        fetch('/api/config')
+            .then(res => res.json())
+            .then(data => {
+                if (data.mongodb) {
+                    setMongoInfo(data.mongodb);
+                }
+            })
+            .catch(err => console.error('Failed to fetch MongoDB config:', err));
+    }, []);
+
     return (
         <Card>
             <CardContent>
@@ -21,16 +39,16 @@ export function MongoDBCard() {
                     <Typography variant="h6">MongoDB</Typography>
                 </Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Persistent vector storage and feedback database
+                    {mongoInfo.description}
                 </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="body2" color="text.secondary">
                         Collections
                     </Typography>
-                    <Chip label="10" color="primary" size="small" />
+                    <Chip label={mongoInfo.collections} color="primary" size="small" />
                 </Box>
                 <Typography variant="caption" color="text.secondary" display="block">
-                    4 vector + 6 feedback collections
+                    {mongoInfo.vector_collections} vector + {mongoInfo.feedback_collections} feedback collections
                 </Typography>
             </CardContent>
         </Card>
@@ -65,12 +83,23 @@ export function LearnedKnowledgeCard({ status }) {
 }
 
 export function MLFeaturesCard() {
-    const features = [
+    const [features, setFeatures] = useState([
         'TF-IDF Vectorization',
         'BM25 Ranking',
         'Cosine Similarity',
         'Query Pattern Learning',
-    ];
+    ]);
+
+    useEffect(() => {
+        fetch('/api/config')
+            .then(res => res.json())
+            .then(data => {
+                if (data.ml_features && data.ml_features.length > 0) {
+                    setFeatures(data.ml_features);
+                }
+            })
+            .catch(err => console.error('Failed to fetch ML features:', err));
+    }, []);
 
     return (
         <Card>
