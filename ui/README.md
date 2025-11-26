@@ -20,8 +20,8 @@ npm install
 
 2. Start the Flask API server:
 ```bash
-cd ../ml
-python src/api_server.py
+cd ../core
+python src/server.py
 ```
 
 3. Start the Vite development server:
@@ -39,13 +39,11 @@ The app will open at `http://localhost:3000`
 
 ## Features
 
-- **Search Page**: Classify errors using Vector DB, Semantic Search, or Hybrid Search (BM25 + Semantic)
-- **Multi-Engine Search**: Aggregate results from all three engines with consensus voting
-- **Engine Comparison**: Collapsible panel showing detailed comparison of all search engines with feature matrix
+- **Search Page**: Classify errors using the Hybrid Custom search engine
 - **Manage Docs**: CRUD operations for documentation files with file preview
 - **Manage Dataset**: Add, edit, and delete training data records
-- **Status Page**: View system health and statistics with per-engine correction counts (auto-refreshing every 5 seconds)
-- **Feedback System**: Thumbs up/down with correction learning for all three engines
+- **Status Page**: View system health and statistics with feedback metrics (auto-refreshing every 5 seconds)
+- **Feedback System**: Thumbs up/down for continuous learning
 
 ## Architecture
 
@@ -64,11 +62,10 @@ All API calls centralized in `src/services/api.js`:
 
 ## API Endpoints
 
-The React app communicates with the Flask API server at `http://localhost:5000`:
+The React app communicates with the Flask API server at `http://localhost:3100`:
 
 **Classification**
-- `POST /api/classify` - Classify an error with specified method
-- `POST /api/teach-correction` - Teach system a correction
+- `POST /api/classify` - Classify an error
 
 **Documentation**
 - `GET /api/docs` - List all documentation files
@@ -84,9 +81,8 @@ The React app communicates with the Flask API server at `http://localhost:5000`:
 - `DELETE /api/dataset/:id` - Delete dataset record
 
 **System**
-- `POST /api/update-kb` - Update knowledge base
-- `GET /api/status` - Get system status with correction counts by engine
-- `GET /api/search-engines-comparison` - Get detailed comparison of all three search engines
+- `GET /api/status` - Get system status with feedback statistics
+- `GET /api/search-engines-comparison` - Get engine information
 
 ## Build for Production
 

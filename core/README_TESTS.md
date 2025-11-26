@@ -2,7 +2,7 @@
 
 ## Overview
 
-Comprehensive test suite using pytest for the error classification system.
+Test suite using pytest for the error classification system.
 
 ## Test Structure
 
@@ -12,10 +12,9 @@ tests/
 ├── conftest.py              # Shared fixtures and configuration
 ├── test_tfidf.py           # TF-IDF vectorizer tests
 ├── test_bm25.py            # BM25 ranking tests
-├── test_similarity.py       # Similarity search tests
-├── test_cache.py           # Redis cache tests
-├── test_docs_security.py    # Security tests for docs API
-└── test_api_endpoints.py    # API endpoint tests
+├── test_similarity.py      # Similarity search tests
+├── test_api_endpoints.py   # API endpoint tests
+└── test_docs_security.py   # Security tests for docs API
 ```
 
 ## Running Tests
@@ -80,7 +79,6 @@ Test individual components in isolation:
 - **test_tfidf.py**: TF-IDF vectorization, tokenization, IDF calculation
 - **test_bm25.py**: BM25 scoring, parameter effects, query handling
 - **test_similarity.py**: Cosine similarity, Euclidean distance, k-NN search
-- **test_cache.py**: Redis cache operations, key generation, statistics
 
 ### Security Tests
 
@@ -99,7 +97,6 @@ Located in `conftest.py`:
 - **sample_documents**: Pre-defined document corpus for testing
 - **sample_queries**: Common test queries
 - **temp_docs_dir**: Temporary directory with sample markdown files
-- **mock_redis_cache**: Disabled Redis cache for testing without Redis
 
 ## Writing New Tests
 
@@ -160,7 +157,7 @@ def test_multiple_inputs(input, expected):
 5. **Test edge cases** (empty input, None, extremes)
 6. **Test error conditions** not just happy paths
 7. **Keep tests isolated** - no dependencies between tests
-8. **Mock external dependencies** (Redis, MongoDB, file system)
+8. **Mock external dependencies** (MongoDB, file system)
 
 ## Continuous Integration
 
