@@ -20,22 +20,23 @@ services:
       dockerfile: Dockerfile
     container_name: error-classifier-backend
     ports:
-      - "5000:5000"
+      - "3100:3100"
     volumes:
       - ../data:/app/data
-      - ../models:/app/models
+      - ../core/models:/app/models
     environment:
       - PYTHONUNBUFFERED=1
       - FLASK_ENV=production
       - REDIS_URL=redis://redis:6379/0
       - REDIS_CACHE_ENABLED=true
       - REDIS_CACHE_TTL=3600
+      - MONGODB_CONNECTION_STRING=mongodb://host.docker.internal:27017/
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
+      test: ["CMD", "curl", "-f", "http://localhost:3100/api/status"]
       interval: 30s
       timeout: 10s
       retries: 3
