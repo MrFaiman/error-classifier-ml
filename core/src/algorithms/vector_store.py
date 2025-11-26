@@ -92,22 +92,22 @@ class VectorStore:
             # Create indexes for fast retrieval
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_doc_path 
-                ON documents(doc_path)
+                ON documents (doc_path)
             """)
             
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_content_hash 
-                ON documents(content_hash)
+                ON documents (content_hash)
             """)
             
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_vector_type 
-                ON vectors(vector_type)
+                ON vectors (vector_type)
             """)
             
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_document_vector 
-                ON vectors(document_id, vector_type)
+                ON vectors (document_id, vector_type)
             """)
             
             conn.commit()
