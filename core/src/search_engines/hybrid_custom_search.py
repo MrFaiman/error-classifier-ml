@@ -17,6 +17,9 @@ from algorithms import (
     MongoVectorStore
 )
 from cache import RedisCache
+from utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class HybridCustomSearchEngine:
@@ -71,16 +74,16 @@ class HybridCustomSearchEngine:
                     mongo_connection_string,
                     database_name='error_classifier'
                 )
-                print(f"[OK] MongoDB vector store initialized: {self.vector_store.db.name}")
+                logger.info(f"MongoDB vector store initialized: {self.vector_store.db.name}")
             except Exception as e:
-                print(f"[WARNING] MongoDB connection failed: {e}")
-                print(f"[WARNING] Continuing without vector store persistence")
+                logger.warning(f"MongoDB connection failed: {e}")
+                logger.warning(f"Continuing without vector store persistence")
                 self.vector_store = None
                 self.use_vector_store = False
         else:
             self.vector_store = None
             if not mongo_connection_string:
-                print(f"[INFO] No MongoDB connection string provided - vector store disabled")
+                logger.info(f"No MongoDB connection string provided - vector store disabled")
         
         # Initialize TF-IDF
         self.tfidf_vectorizer = TfidfVectorizer(
@@ -152,7 +155,7 @@ class HybridCustomSearchEngine:
                 content = f.read()
             return content
         except Exception as e:
-            print(f"[Warning] Failed to read {filepath}: {e}")
+            logger.warning(f"Failed to read {filepath}: {e}")
             return None
     
     def _extract_metadata(self, filepath):
@@ -175,7 +178,7 @@ class HybridCustomSearchEngine:
     
     def _index_documents(self):
         """Index all documentation files using both TF-IDF and BM25"""
-        print("Indexing documentation with TF-IDF and BM25...")
+        logger.info("Indexing documentation with TF-IDF and BM25...")
         
         # Invalidate cache on reindex
         self.cache.invalidate_on_doc_change()
@@ -185,7 +188,7 @@ class HybridCustomSearchEngine:
         files = glob.glob(search_pattern, recursive=True)
         
         if not files:
-            print(f"[Warning] No documentation files found in {self.docs_root_dir}")
+            logger.warning(f"No documentation files found in {self.docs_root_dir}")
             return
         
         # Check if we can use cached vectors
@@ -193,7 +196,7 @@ class HybridCustomSearchEngine:
             needs_reindex = self.vector_store.needs_reindex(files, 'tfidf')
             
             if not needs_reindex:
-                print("Loading vectors from persistent store...")
+                logger.info("Loading vectors from persistent store...")
                 # Load from vector store
                 self.doc_paths, self.tfidf_matrix = self.vector_store.get_all_vectors('tfidf')
                 
@@ -218,15 +221,15 @@ class HybridCustomSearchEngine:
                     if len(self.documents) > 0:
                         self.bm25.fit(self.documents)
                     
-                    print(f"✓ Loaded {len(self.doc_paths)} documents from vector store")
-                    print(f"TF-IDF matrix shape: {self.tfidf_matrix.shape}")
-                    print(f"BM25 corpus size: {self.bm25.corpus_size}")
+                    logger.info(f"✓ Loaded {len(self.doc_paths)} documents from vector store")
+                    logger.info(f"TF-IDF matrix shape: {self.tfidf_matrix.shape}")
+                    logger.info(f"BM25 corpus size: {self.bm25.corpus_size}")
                     return
                 else:
-                    print("[WARNING] Vector store returned empty data, rebuilding index...")
+                    logger.warning("Vector store returned empty data, rebuilding index...")
         
         # Need to build index from scratch
-        print("Building fresh index...")
+        logger.info("Building fresh index...")
         
         # Load all documents
         for filepath in files:
@@ -245,20 +248,20 @@ class HybridCustomSearchEngine:
                         metadata.get('category')
                     )
         
-        print(f"Loaded {len(self.documents)} documents")
+        logger.info(f"Loaded {len(self.documents)} documents")
         
         if len(self.documents) == 0:
-            print("[Warning] No documents loaded")
+            logger.warning("No documents loaded")
             return
         
         # Fit TF-IDF vectorizer
-        print("Building custom TF-IDF index...")
+        logger.info("Building custom TF-IDF index...")
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.documents)
-        print(f"TF-IDF matrix shape: {self.tfidf_matrix.shape}")
+        logger.info(f"TF-IDF matrix shape: {self.tfidf_matrix.shape}")
         
         # Save TF-IDF vectors to store
         if self.use_vector_store and self.vector_store:
-            print("Saving TF-IDF vectors to persistent store...")
+            logger.info("Saving TF-IDF vectors to persistent store...")
             self.vector_store.save_vectors_batch(self.doc_paths, self.tfidf_matrix, 'tfidf')
             
             # Save vocabulary
@@ -275,14 +278,14 @@ class HybridCustomSearchEngine:
                 'stop_words': True
             }
             self.vector_store.save_metadata('tfidf', metadata)
-            print("✓ Vectors persisted to SQLite")
+            logger.info("✓ Vectors persisted to SQLite")
         
         # Fit BM25 ranker
-        print("Building custom BM25 index...")
+        logger.info("Building custom BM25 index...")
         self.bm25.fit(self.documents)
-        print(f"BM25 corpus size: {self.bm25.corpus_size}, avg doc length: {self.bm25.avgdl:.2f}")
+        logger.info(f"BM25 corpus size: {self.bm25.corpus_size}, avg doc length: {self.bm25.avgdl:.2f}")
         
-        print("✓ Indexing complete!")
+        logger.info("✓ Indexing complete!")
     
     def _init_feedback_system(self):
         """Initialize feedback learning system"""
@@ -513,12 +516,12 @@ class HybridCustomSearchEngine:
                 'HYBRID_CUSTOM'
             )
             
-            print(f"[Feedback] Recorded correction:")
-            print(f"  Query: {error_text[:50]}...")
-            print(f"  Predicted: {predicted_doc}")
-            print(f"  Actual: {correct_doc_path}")
-            print(f"  Success rate: {feedback_result['success_rate']:.2%}")
-            print(f"  Engine accuracy: {feedback_result['engine_accuracy']:.2%}")
+            logger.info(f"Feedback: Recorded correction:")
+            logger.info(f"  Query: {error_text[:50]}...")
+            logger.info(f"  Predicted: {predicted_doc}")
+            logger.info(f"  Actual: {correct_doc_path}")
+            logger.info(f"  Success rate: {feedback_result['success_rate']:.2%}")
+            logger.info(f"  Engine accuracy: {feedback_result['engine_accuracy']:.2%}")
         
         # Also add to old feedback system for backward compatibility
         self.feedback_documents.append(error_text)
@@ -532,11 +535,11 @@ class HybridCustomSearchEngine:
         # Save feedback data
         try:
             self.feedback_loop.save_to_file(self.feedback_file)
-            print(f"[OK] Saved feedback data: {len(self.feedback_loop.feedback_history)} entries")
+            logger.info(f"Saved feedback data: {len(self.feedback_loop.feedback_history)} entries")
         except Exception as e:
-            print(f"[WARN] Could not save feedback: {e}")
+            logger.warning(f"Could not save feedback: {e}")
         
-        print(f"[Feedback] Total corrections: {len(self.feedback_documents)}")
+        logger.info(f"Feedback: Total corrections: {len(self.feedback_documents)}")
 
     
     def get_ranking_weights(self):

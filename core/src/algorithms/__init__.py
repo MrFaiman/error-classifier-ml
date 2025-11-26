@@ -17,6 +17,7 @@ from .feedback_loop import FeedbackLoop
 from .mongo_feedback_database import MongoFeedbackDatabase
 from .mongo_vector_store import MongoVectorStore
 from .nlp_explainer import NLPErrorExplainer, get_explainer
+from .nlu_classifier import NLUErrorClassifier, SemanticNLUSearch
 
 __all__ = [
     # TF-IDF
@@ -49,4 +50,7 @@ __all__ = [
     # NLP Explainer
     'NLPErrorExplainer',
     'get_explainer',
+    # NLU Classifier
+    'NLUErrorClassifier',
+    'SemanticNLUSearch',
 ]

@@ -4,6 +4,9 @@ Endpoints for managing documentation
 """
 from flask import Blueprint, request, jsonify
 from api.controllers import docs_controller
+from utils import get_logger
+
+logger = get_logger(__name__)
 
 bp = Blueprint('docs', __name__, url_prefix='/api')
 
@@ -28,7 +31,7 @@ def get_doc_content():
         if doc_path:
             # Log suspicious patterns
             if '..' in doc_path or doc_path.startswith('/') or '\\' in doc_path:
-                print(f"[SECURITY] Suspicious path requested: {doc_path} from {request.remote_addr}")
+                logger.warning(f"SECURITY: Suspicious path requested: {doc_path} from {request.remote_addr}")
         
         result, error = docs_controller.get_doc_content(doc_path)
         
@@ -47,7 +50,7 @@ def get_doc_content():
         
         return jsonify(result)
     except Exception as e:
-        print(f"[ERROR] doc-content exception: {str(e)}")
+        logger.error(f"doc-content exception: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
 

@@ -9,6 +9,9 @@ from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 from collections import defaultdict
 from .mongo_feedback_database import MongoFeedbackDatabase
+from utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class FeedbackLoop:
@@ -51,9 +54,9 @@ class FeedbackLoop:
             try:
                 self.db = MongoFeedbackDatabase(mongo_connection)
                 self.use_database = True
-                print(f"[OK] Feedback database using MongoDB")
+                logger.info("Feedback database using MongoDB")
             except Exception as e:
-                print(f"[WARNING] MongoDB connection failed: {e}")
+                logger.warning(f"MongoDB connection failed: {e}")
                 self.db = None
         
         # In-memory cache for backward compatibility and fast access

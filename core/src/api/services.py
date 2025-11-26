@@ -5,6 +5,9 @@ Manages initialization and access to custom ML search engines
 from search_engines import HybridCustomSearchEngine
 from constants import DOCS_ROOT_DIR, MONGODB_CONNECTION_STRING
 from algorithms import get_explainer
+from utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class SearchEngineService:
@@ -18,7 +21,7 @@ class SearchEngineService:
     
     def _initialize_engines(self):
         """Initialize Hybrid Custom search engine"""
-        print("Initializing Hybrid Custom search engine...")
+        logger.info("Initializing Hybrid Custom search engine...")
         
         try:
             self.hybrid_custom = HybridCustomSearchEngine(
@@ -27,21 +30,21 @@ class SearchEngineService:
                 bm25_weight=0.6,
                 mongo_connection_string=MONGODB_CONNECTION_STRING
             )
-            print("[OK] Hybrid Custom Search initialized (TF-IDF + BM25 + Adaptive Feedback)")
+            logger.info("Hybrid Custom Search initialized (TF-IDF + BM25 + Adaptive Feedback)")
         except Exception as e:
-            print(f"[ERROR] Hybrid Custom Search failed: {e}")
+            logger.error(f"Hybrid Custom Search failed: {e}")
     
     def _initialize_explainer(self):
         """Initialize NLP explainer for error explanations"""
-        print("Initializing NLP Error Explainer...")
+        logger.info("Initializing NLP Error Explainer...")
         
         try:
             # Use lightweight model for faster initialization
             self.nlp_explainer = get_explainer(model_name="t5-small")
-            print("[OK] NLP Explainer initialized (T5-small model)")
+            logger.info("NLP Explainer initialized (T5-small model)")
         except Exception as e:
-            print(f"[WARNING] NLP Explainer initialization failed: {e}")
-            print("[INFO] Explanations will use rule-based fallback")
+            logger.warning(f"NLP Explainer initialization failed: {e}")
+            logger.info("Explanations will use rule-based fallback")
     
     def get_engine(self, method):
         """Get search engine by method name"""

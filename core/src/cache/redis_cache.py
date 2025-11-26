@@ -6,6 +6,9 @@ import json
 import hashlib
 from typing import Optional, Tuple, Any
 from datetime import timedelta
+from utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class RedisCache:
@@ -35,11 +38,11 @@ class RedisCache:
         self.cache_misses = 0
         
         if not enabled:
-            print("[INFO] Redis cache disabled")
+            logger.info("Redis cache disabled")
             return
         
         if not redis_url:
-            print("[WARNING] No Redis URL provided, cache disabled")
+            logger.warning("No Redis URL provided, cache disabled")
             self.enabled = False
             return
         
@@ -53,14 +56,14 @@ class RedisCache:
             )
             # Test connection
             self.redis_client.ping()
-            print(f"[OK] Redis cache connected: {redis_url}")
-            print(f"[OK] Cache TTL: {ttl_seconds} seconds")
+            logger.info(f"Redis cache connected: {redis_url}")
+            logger.info(f"Cache TTL: {ttl_seconds} seconds")
         except ImportError:
-            print("[WARNING] redis package not installed. Install with: pip install redis")
+            logger.warning("redis package not installed. Install with: pip install redis")
             self.enabled = False
         except Exception as e:
-            print(f"[WARNING] Redis connection failed: {e}")
-            print("[INFO] Continuing without cache")
+            logger.warning(f"Redis connection failed: {e}")
+            logger.info("Continuing without cache")
             self.enabled = False
     
     def _generate_key(self, prefix: str, query: str, **kwargs) -> str:
@@ -117,7 +120,7 @@ class RedisCache:
                 self.cache_misses += 1
                 return None
         except Exception as e:
-            print(f"[WARNING] Redis get error: {e}")
+            logger.warning(f"Redis get error: {e}")
             return None
     
     def set(self, prefix: str, query: str, value: Any, ttl: int = None, **kwargs):
@@ -144,7 +147,7 @@ class RedisCache:
                 json.dumps(value)
             )
         except Exception as e:
-            print(f"[WARNING] Redis set error: {e}")
+            logger.warning(f"Redis set error: {e}")
     
     def delete(self, prefix: str, pattern: str = "*"):
         """
@@ -163,9 +166,9 @@ class RedisCache:
             
             if keys:
                 self.redis_client.delete(*keys)
-                print(f"[INFO] Deleted {len(keys)} cache entries matching {full_pattern}")
+                logger.info(f"Deleted {len(keys)} cache entries matching {full_pattern}")
         except Exception as e:
-            print(f"[WARNING] Redis delete error: {e}")
+            logger.warning(f"Redis delete error: {e}")
     
     def clear_all(self):
         """Clear all cache entries"""
@@ -174,9 +177,9 @@ class RedisCache:
         
         try:
             self.redis_client.flushdb()
-            print("[INFO] Cache cleared")
+            logger.info("Cache cleared")
         except Exception as e:
-            print(f"[WARNING] Redis clear error: {e}")
+            logger.warning(f"Redis clear error: {e}")
     
     def get_stats(self) -> dict:
         """
@@ -211,7 +214,7 @@ class RedisCache:
                 stats['used_memory_human'] = info.get('used_memory_human', 'N/A')
                 stats['keys_count'] = self.redis_client.dbsize()
             except Exception as e:
-                print(f"[WARNING] Could not get Redis stats: {e}")
+                logger.warning(f"Could not get Redis stats: {e}")
         
         return stats
     
@@ -219,13 +222,13 @@ class RedisCache:
         """Invalidate all search caches when documents change"""
         self.delete('search')
         self.delete('classification')
-        print("[INFO] Cache invalidated due to document change")
+        logger.info("Cache invalidated due to document change")
     
     def close(self):
         """Close Redis connection"""
         if self.redis_client:
             try:
                 self.redis_client.close()
-                print("[INFO] Redis connection closed")
+                logger.info("Redis connection closed")
             except Exception as e:
-                print(f"[WARNING] Error closing Redis: {e}")
+                logger.warning(f"Error closing Redis: {e}")

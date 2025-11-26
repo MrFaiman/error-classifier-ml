@@ -6,6 +6,9 @@ import os
 import glob
 from typing import List, Dict, Set, Tuple, Optional
 from constants import DOCS_ROOT_DIR
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def _extract_service_and_category(filepath: str) -> Optional[Tuple[str, str]]:
@@ -41,7 +44,7 @@ def get_all_doc_files() -> List[str]:
         pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
         return glob.glob(pattern, recursive=True)
     except Exception as e:
-        print(f"[WARN] Could not scan documentation files: {e}")
+        logger.warning(f"Could not scan documentation files: {e}")
         return []
 
 
@@ -138,5 +141,5 @@ def read_doc_content(doc_path: str) -> Optional[str]:
         with open(doc_path, 'r', encoding='utf-8') as f:
             return f.read()
     except Exception as e:
-        print(f"[WARN] Could not read doc file {doc_path}: {e}")
+        logger.warning(f"Could not read doc file {doc_path}: {e}")
         return None

@@ -7,6 +7,9 @@ import glob
 from flask import jsonify
 from constants import DOCS_ROOT_DIR
 from api.services import search_service
+from utils import get_logger
+
+logger = get_logger(__name__)
 
 
 def verify_and_fallback(doc_path, query_text, method):
@@ -26,8 +29,8 @@ def verify_and_fallback(doc_path, query_text, method):
     if os.path.exists(doc_path):
         return doc_path, None, None, False
     
-    print(f"[WARNING] Predicted path does not exist: {doc_path}")
-    print(f"Searching for closest existing documentation file...")
+    logger.warning(f"Predicted path does not exist: {doc_path}")
+    logger.info("Searching for closest existing documentation file...")
     
     # Get all available docs
     pattern = os.path.join(DOCS_ROOT_DIR, '**', '*.md')
@@ -45,11 +48,11 @@ def verify_and_fallback(doc_path, query_text, method):
                 if doc_parts[-2] == file_parts[-2]:
                     # Try exact filename match
                     if doc_parts[-1] == file_parts[-1]:
-                        print(f"[OK] Found matching file by name: {file}")
+                        logger.info(f"Found matching file by name: {file}")
                         return file, 50.0, f'{method} (File Match)', True
         
         # Last resort: return first available file
-        print(f"[WARNING] No close match found. Returning first available file.")
+        logger.warning("No close match found. Returning first available file.")
         return available_files[0], 25.0, f'{method} (Default)', True
     
     # If no files at all, return original path with warning
@@ -92,7 +95,7 @@ def classify_single(error_message, method):
                     metadata
                 )
             except Exception as e:
-                print(f"[WARNING] Failed to generate explanation: {e}")
+                logger.warning(f"Failed to generate explanation: {e}")
                 explanation = None
         
         return doc_path, confidence, source, explanation, None
@@ -140,7 +143,7 @@ def classify_multi(query_text):
                     metadata
                 )
             except Exception as e:
-                print(f"[WARNING] Failed to generate explanation: {e}")
+                logger.warning(f"Failed to generate explanation: {e}")
         
         return {
             'multi_search': True,
@@ -162,7 +165,7 @@ def classify_multi(query_text):
             }]
         }
     except Exception as e:
-        print(f"[ERROR] HYBRID_CUSTOM classification: {e}")
+        logger.error(f"HYBRID_CUSTOM classification: {e}")
         return None
 
 

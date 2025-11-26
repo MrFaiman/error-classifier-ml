@@ -7,6 +7,9 @@ import re
 from typing import Optional, Dict, Tuple
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
+from utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class NLPErrorExplainer:
@@ -56,11 +59,11 @@ class NLPErrorExplainer:
                 )
                 self.model_type = "summarization"
             
-            print(f"[OK] NLP Explainer initialized with {model_name} on {self.device}")
+            logger.info(f"NLP Explainer initialized with {model_name} on {self.device}")
             
         except Exception as e:
-            print(f"[WARNING] Could not load model {model_name}: {e}")
-            print(f"[INFO] Falling back to rule-based explanations")
+            logger.warning(f"Could not load model {model_name}: {e}")
+            logger.info("Falling back to rule-based explanations")
             self.model = None
             self.model_type = "rule-based"
     
@@ -71,7 +74,7 @@ class NLPErrorExplainer:
                 with open(doc_path, 'r', encoding='utf-8') as f:
                     return f.read()
         except Exception as e:
-            print(f"[WARNING] Could not read doc {doc_path}: {e}")
+            logger.warning(f"Could not read doc {doc_path}: {e}")
         return None
     
     def _extract_key_info(self, doc_content: str) -> Dict[str, str]:
@@ -242,7 +245,7 @@ class NLPErrorExplainer:
                     explanation += f" (Note: Classification confidence is {confidence:.1f}%, please verify.)"
                 
             except Exception as e:
-                print(f"[WARNING] Model generation failed: {e}, using rule-based fallback")
+                logger.warning(f"Model generation failed: {e}, using rule-based fallback")
                 explanation = self._generate_rule_based_explanation(
                     error_message, doc_info, service, category
                 )
@@ -327,7 +330,7 @@ class NLPErrorExplainer:
     def clear_cache(self):
         """Clear the explanation cache"""
         self._explanation_cache.clear()
-        print("[OK] Explanation cache cleared")
+        logger.info("Explanation cache cleared")
     
     def get_cache_stats(self) -> Dict[str, int]:
         """Get cache statistics"""

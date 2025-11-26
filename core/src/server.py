@@ -10,38 +10,44 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from api import create_app
 from constants import API_PORT
+from utils import get_logger, setup_flask_logging
+
+logger = get_logger(__name__)
 
 # Create Flask application
 app = create_app()
 
+# Setup Flask logging
+setup_flask_logging(app)
+
 if __name__ == '__main__':
-    print("\n" + "=" * 70)
-    print("Error Classification API Server")
-    print("=" * 70 + "\n")
+    logger.info("=" * 70)
+    logger.info("Error Classification API Server")
+    logger.info("=" * 70)
     
-    print(f"Starting server on http://localhost:{API_PORT}")
-    print(f"API endpoints available at: http://localhost:{API_PORT}/api/")
-    print("\nAvailable endpoints:")
-    print("  POST   /api/classify              - Classify an error")
-    print("  POST   /api/teach-correction      - Teach a correction")
-    print("  GET    /api/config                - Get system configuration")
-    print("  GET    /api/services              - Get available services")
-    print("  GET    /api/categories            - Get error categories by service")
-    print("  GET    /api/docs                  - Get all documentation")
-    print("  GET    /api/doc-content?path=...  - Get specific doc content")
-    print("  POST   /api/docs                  - Create new documentation")
-    print("  PUT    /api/docs/<id>             - Update documentation")
-    print("  DELETE /api/docs/<id>             - Delete documentation")
-    print("  GET    /api/dataset               - Get dataset records")
-    print("  POST   /api/dataset               - Add dataset record")
-    print("  PUT    /api/dataset/<id>          - Update dataset record")
-    print("  DELETE /api/dataset/<id>          - Delete dataset record")
-    print("  GET    /api/quiz/generate         - Generate quiz questions")
-    print("  GET    /api/quiz/question         - Get single quiz question")
-    print("  POST   /api/quiz/check            - Check quiz answer")
-    print("  GET    /api/status                - System health status")
-    print("  GET    /api/search-engines-comparison - Compare search engines")
-    print("\n" + "=" * 70 + "\n")
+    logger.info(f"Starting server on http://localhost:{API_PORT}")
+    logger.info(f"API endpoints available at: http://localhost:{API_PORT}/api/")
+    logger.info("Available endpoints:")
+    logger.info("  POST   /api/classify              - Classify an error")
+    logger.info("  POST   /api/teach-correction      - Teach a correction")
+    logger.info("  GET    /api/config                - Get system configuration")
+    logger.info("  GET    /api/services              - Get available services")
+    logger.info("  GET    /api/categories            - Get error categories by service")
+    logger.info("  GET    /api/docs                  - Get all documentation")
+    logger.info("  GET    /api/doc-content?path=...  - Get specific doc content")
+    logger.info("  POST   /api/docs                  - Create new documentation")
+    logger.info("  PUT    /api/docs/<id>             - Update documentation")
+    logger.info("  DELETE /api/docs/<id>             - Delete documentation")
+    logger.info("  GET    /api/dataset               - Get dataset records")
+    logger.info("  POST   /api/dataset               - Add dataset record")
+    logger.info("  PUT    /api/dataset/<id>          - Update dataset record")
+    logger.info("  DELETE /api/dataset/<id>          - Delete dataset record")
+    logger.info("  GET    /api/quiz/generate         - Generate quiz questions")
+    logger.info("  GET    /api/quiz/question         - Get single quiz question")
+    logger.info("  POST   /api/quiz/check            - Check quiz answer")
+    logger.info("  GET    /api/status                - System health status")
+    logger.info("  GET    /api/search-engines-comparison - Compare search engines")
+    logger.info("=" * 70)
     
     app.run(
         host='0.0.0.0',

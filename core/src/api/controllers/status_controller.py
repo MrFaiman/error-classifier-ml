@@ -3,6 +3,9 @@ Status Controller
 Handles system status and health checks
 """
 from api.services import search_service
+from utils import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_system_status():
@@ -28,7 +31,7 @@ def get_system_status():
         try:
             feedback_stats = engines['hybrid_custom'].get_feedback_statistics()
         except Exception as e:
-            print(f"[WARN] Could not get feedback stats: {e}")
+            logger.warning(f"Could not get feedback stats: {e}")
     
     healthy = search_service.is_healthy()
     
