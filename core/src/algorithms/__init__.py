@@ -15,6 +15,7 @@ from .edit_distance import EditDistance, FuzzyMatcher, fuzzy_search
 from .bm25 import BM25, BM25Plus, BM25Okapi, compare_bm25_variants
 from .feedback_loop import FeedbackLoop
 from .feedback_database import FeedbackDatabase
+from .vector_store import VectorStore
 
 __all__ = [
     # TF-IDF
@@ -42,4 +43,6 @@ __all__ = [
     # Feedback Loop
     'FeedbackLoop',
     'FeedbackDatabase',
+    # Vector Store
+    'VectorStore',
 ]

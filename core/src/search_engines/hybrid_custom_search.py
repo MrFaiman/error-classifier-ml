@@ -1,6 +1,7 @@
 """
 Hybrid Custom Search Engine with BM25 Ranking
 Combines TF-IDF, BM25, Cosine Similarity, and Fuzzy Matching
+Now with persistent vector storage in SQLite
 """
 import os
 import glob
@@ -13,7 +14,8 @@ from algorithms import (
     BM25,
     EditDistance,
     FuzzyMatcher,
-    FeedbackLoop
+    FeedbackLoop,
+    VectorStore
 )
 
 
@@ -29,7 +31,8 @@ class HybridCustomSearchEngine:
     """
     
     def __init__(self, docs_root_dir=None, max_features=5000, 
-                 tfidf_weight=0.4, bm25_weight=0.6, k1=1.5, b=0.75):
+                 tfidf_weight=0.4, bm25_weight=0.6, k1=1.5, b=0.75,
+                 use_vector_store=True):
         """
         Initialize hybrid custom search engine
         
@@ -40,6 +43,7 @@ class HybridCustomSearchEngine:
             bm25_weight: Weight for BM25 scores (0-1)
             k1: BM25 term frequency saturation parameter
             b: BM25 length normalization parameter
+            use_vector_store: Use SQLite vector store for persistence (default: True)
         """
         if docs_root_dir is None:
             docs_root_dir = DOCS_ROOT_DIR
@@ -47,12 +51,21 @@ class HybridCustomSearchEngine:
         self.max_features = max_features
         self.tfidf_weight = tfidf_weight
         self.bm25_weight = bm25_weight
+        self.use_vector_store = use_vector_store
         
         # Normalize weights
         total_weight = tfidf_weight + bm25_weight
         if total_weight > 0:
             self.tfidf_weight = tfidf_weight / total_weight
             self.bm25_weight = bm25_weight / total_weight
+        
+        # Initialize vector store if enabled
+        if self.use_vector_store:
+            vector_db_path = os.path.join(DATA_DIR, 'vectors_hybrid_custom.db')
+            self.vector_store = VectorStore(vector_db_path)
+            print(f"[OK] Vector store initialized: {vector_db_path}")
+        else:
+            self.vector_store = None
         
         # Initialize TF-IDF
         self.tfidf_vectorizer = TfidfVectorizer(
@@ -137,6 +150,41 @@ class HybridCustomSearchEngine:
             print(f"[Warning] No documentation files found in {self.docs_root_dir}")
             return
         
+        # Check if we can use cached vectors
+        if self.use_vector_store and self.vector_store:
+            needs_reindex = self.vector_store.needs_reindex(files, 'tfidf')
+            
+            if not needs_reindex:
+                print("Loading vectors from persistent store...")
+                # Load from vector store
+                self.doc_paths, self.tfidf_matrix = self.vector_store.get_all_vectors('tfidf')
+                
+                # Load vocabulary
+                feature_names, idf_values = self.vector_store.get_vocabulary('tfidf')
+                if feature_names:
+                    self.tfidf_vectorizer.vocabulary_ = {name: idx for idx, name in enumerate(feature_names)}
+                    self.tfidf_vectorizer.idf_ = idf_values
+                    self.tfidf_vectorizer.is_fitted = True
+                
+                # Load documents for BM25
+                for filepath in self.doc_paths:
+                    content = self._read_document(filepath)
+                    if content:
+                        self.documents.append(content)
+                        self.doc_metadata.append(self._extract_metadata(filepath))
+                
+                # Rebuild BM25 (lightweight, doesn't need persistence)
+                if len(self.documents) > 0:
+                    self.bm25.fit(self.documents)
+                
+                print(f"✓ Loaded {len(self.doc_paths)} documents from vector store")
+                print(f"TF-IDF matrix shape: {self.tfidf_matrix.shape}")
+                print(f"BM25 corpus size: {self.bm25.corpus_size}")
+                return
+        
+        # Need to build index from scratch
+        print("Building fresh index...")
+        
         # Load all documents
         for filepath in files:
             content = self._read_document(filepath)
@@ -144,6 +192,15 @@ class HybridCustomSearchEngine:
                 self.documents.append(content)
                 self.doc_paths.append(filepath)
                 self.doc_metadata.append(self._extract_metadata(filepath))
+                
+                # Save document to vector store
+                if self.use_vector_store and self.vector_store:
+                    metadata = self._extract_metadata(filepath)
+                    self.vector_store.save_document(
+                        filepath, content, 
+                        metadata.get('service'), 
+                        metadata.get('category')
+                    )
         
         print(f"Loaded {len(self.documents)} documents")
         
@@ -155,6 +212,27 @@ class HybridCustomSearchEngine:
         print("Building custom TF-IDF index...")
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(self.documents)
         print(f"TF-IDF matrix shape: {self.tfidf_matrix.shape}")
+        
+        # Save TF-IDF vectors to store
+        if self.use_vector_store and self.vector_store:
+            print("Saving TF-IDF vectors to persistent store...")
+            self.vector_store.save_vectors_batch(self.doc_paths, self.tfidf_matrix, 'tfidf')
+            
+            # Save vocabulary
+            if hasattr(self.tfidf_vectorizer, 'vocabulary_'):
+                feature_names = list(self.tfidf_vectorizer.vocabulary_.keys())
+                idf_values = self.tfidf_vectorizer.idf_
+                self.vector_store.save_vocabulary('tfidf', feature_names, idf_values)
+            
+            # Save metadata
+            metadata = {
+                'max_features': self.max_features,
+                'ngram_min': 1,
+                'ngram_max': 2,
+                'stop_words': True
+            }
+            self.vector_store.save_metadata('tfidf', metadata)
+            print("✓ Vectors persisted to SQLite")
         
         # Fit BM25 ranker
         print("Building custom BM25 index...")
