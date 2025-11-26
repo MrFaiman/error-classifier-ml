@@ -1,7 +1,7 @@
 """
 Hybrid Custom Search Engine with BM25 Ranking
 Combines TF-IDF, BM25, Cosine Similarity, and Fuzzy Matching
-Now with persistent vector storage in SQLite
+Now with persistent vector storage in MongoDB
 """
 import os
 import glob
@@ -15,7 +15,7 @@ from algorithms import (
     EditDistance,
     FuzzyMatcher,
     FeedbackLoop,
-    VectorStore
+    MongoVectorStore
 )
 
 
@@ -32,7 +32,8 @@ class HybridCustomSearchEngine:
     
     def __init__(self, docs_root_dir=None, max_features=5000, 
                  tfidf_weight=0.4, bm25_weight=0.6, k1=1.5, b=0.75,
-                 use_vector_store=True):
+                 use_vector_store=True,
+                 mongo_connection_string='mongodb://root:3l91PRi23Mlx@faiman:27017/'):
         """
         Initialize hybrid custom search engine
         
@@ -43,7 +44,8 @@ class HybridCustomSearchEngine:
             bm25_weight: Weight for BM25 scores (0-1)
             k1: BM25 term frequency saturation parameter
             b: BM25 length normalization parameter
-            use_vector_store: Use SQLite vector store for persistence (default: True)
+            use_vector_store: Use MongoDB vector store for persistence (default: True)
+            mongo_connection_string: MongoDB connection string
         """
         if docs_root_dir is None:
             docs_root_dir = DOCS_ROOT_DIR
@@ -59,11 +61,19 @@ class HybridCustomSearchEngine:
             self.tfidf_weight = tfidf_weight / total_weight
             self.bm25_weight = bm25_weight / total_weight
         
-        # Initialize vector store if enabled
+        # Initialize MongoDB vector store if enabled
         if self.use_vector_store:
-            vector_db_path = os.path.join(DATA_DIR, 'vectors_hybrid_custom.db')
-            self.vector_store = VectorStore(vector_db_path)
-            print(f"[OK] Vector store initialized: {vector_db_path}")
+            try:
+                self.vector_store = MongoVectorStore(
+                    mongo_connection_string,
+                    database_name='error_classifier'
+                )
+                print(f"[OK] MongoDB vector store initialized: {self.vector_store.db.name}")
+            except Exception as e:
+                print(f"[WARNING] MongoDB connection failed: {e}")
+                print(f"[WARNING] Continuing without vector store persistence")
+                self.vector_store = None
+                self.use_vector_store = False
         else:
             self.vector_store = None
         
@@ -93,23 +103,30 @@ class HybridCustomSearchEngine:
         self.feedback_documents = []
         self.feedback_paths = []
         
-        # Initialize feedback loop with SQLite database
+        # Initialize feedback loop (MongoDB preferred, SQLite fallback)
         db_path = os.path.join(DATA_DIR, 'feedback_hybrid_custom.db')
         self.feedback_loop = FeedbackLoop(
             learning_rate=0.1,
             confidence_boost=5.0,
             confidence_penalty=10.0,
-            db_path=db_path
+            db_path=db_path,
+            mongo_connection=mongo_connection_string if use_vector_store else None
         )
         self.feedback_file = os.path.join(DATA_DIR, 'feedback_hybrid_custom.json')
-        
-        print(f"[OK] Feedback loop initialized with SQLite database: {db_path}")
         
         # Load and index documents
         self._index_documents()
         
         # Initialize feedback system
         self._init_feedback_system()
+    
+    def __del__(self):
+        """Cleanup MongoDB connection"""
+        if hasattr(self, 'vector_store') and self.vector_store:
+            try:
+                self.vector_store.close()
+            except:
+                pass
     
     def _read_document(self, filepath):
         """Read and preprocess a document file"""
@@ -160,28 +177,32 @@ class HybridCustomSearchEngine:
                 # Load from vector store
                 self.doc_paths, self.tfidf_matrix = self.vector_store.get_all_vectors('tfidf')
                 
-                # Load vocabulary
-                feature_names, idf_values = self.vector_store.get_vocabulary('tfidf')
-                if feature_names:
-                    self.tfidf_vectorizer.vocabulary_ = {name: idx for idx, name in enumerate(feature_names)}
-                    self.tfidf_vectorizer.idf_ = idf_values
-                    self.tfidf_vectorizer.is_fitted = True
-                
-                # Load documents for BM25
-                for filepath in self.doc_paths:
-                    content = self._read_document(filepath)
-                    if content:
-                        self.documents.append(content)
-                        self.doc_metadata.append(self._extract_metadata(filepath))
-                
-                # Rebuild BM25 (lightweight, doesn't need persistence)
-                if len(self.documents) > 0:
-                    self.bm25.fit(self.documents)
-                
-                print(f"✓ Loaded {len(self.doc_paths)} documents from vector store")
-                print(f"TF-IDF matrix shape: {self.tfidf_matrix.shape}")
-                print(f"BM25 corpus size: {self.bm25.corpus_size}")
-                return
+                # Verify we actually loaded something
+                if len(self.doc_paths) > 0 and self.tfidf_matrix.size > 0:
+                    # Load vocabulary
+                    feature_names, idf_values = self.vector_store.get_vocabulary('tfidf')
+                    if feature_names:
+                        self.tfidf_vectorizer.vocabulary_ = {name: idx for idx, name in enumerate(feature_names)}
+                        self.tfidf_vectorizer.idf_ = idf_values
+                        self.tfidf_vectorizer.is_fitted = True
+                    
+                    # Load documents for BM25
+                    for filepath in self.doc_paths:
+                        content = self._read_document(filepath)
+                        if content:
+                            self.documents.append(content)
+                            self.doc_metadata.append(self._extract_metadata(filepath))
+                    
+                    # Rebuild BM25 (lightweight, doesn't need persistence)
+                    if len(self.documents) > 0:
+                        self.bm25.fit(self.documents)
+                    
+                    print(f"✓ Loaded {len(self.doc_paths)} documents from vector store")
+                    print(f"TF-IDF matrix shape: {self.tfidf_matrix.shape}")
+                    print(f"BM25 corpus size: {self.bm25.corpus_size}")
+                    return
+                else:
+                    print("[WARNING] Vector store returned empty data, rebuilding index...")
         
         # Need to build index from scratch
         print("Building fresh index...")

@@ -6,4 +6,4 @@ sentence-transformers
 torch
 chromadb
 flask
-flask-cors
+flask-corspymongo
